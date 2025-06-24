@@ -11,7 +11,6 @@ import Classes from './pages/Classes';
 import Subjects from './pages/Subjects';
 import Meetings from './pages/Meetings';
 import Users from './pages/Users';
-import StudentLabeling from './pages/StudentLabelling';
 import Profile from './pages/Profile';
 import ClassDetail from './pages/ClassDetail';
 import SubjectDetail from './pages/SubjectDetail';
@@ -107,14 +106,6 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <LiveMonitoring />
-                </Layout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/student-labeling" element={
-              <ProtectedRoute>
-                <Layout>
-                  <StudentLabeling />
                 </Layout>
               </ProtectedRoute>
             } />

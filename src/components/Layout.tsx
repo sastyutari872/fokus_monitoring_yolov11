@@ -15,8 +15,7 @@ import {
   Search,
   Settings,
   Video,
-  Zap,
-  Target
+  Zap
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -33,7 +32,6 @@ export default function Layout({ children }: LayoutProps) {
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, color: 'text-blue-600' },
     { name: 'Live Monitoring', href: '/live-monitoring', icon: Video, color: 'text-red-600' },
-    { name: 'Student Labeling', href: '/student-labeling', icon: Target, color: 'text-purple-600' },
     { name: 'Classes', href: '/classes', icon: GraduationCap, color: 'text-green-600' },
     { name: 'Subjects', href: '/subjects', icon: BookOpen, color: 'text-purple-600' },
     { name: 'Meetings', href: '/meetings', icon: Calendar, color: 'text-orange-600' },
