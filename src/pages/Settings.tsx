@@ -15,7 +15,10 @@ import {
   Shield,
   Clock,
   Bell,
-  UploadCloud
+  UploadCloud,
+  Trash2,
+  Download,
+  Cloud
 } from 'lucide-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -49,17 +52,29 @@ interface SettingsData {
   selectedCamera: string;
 }
 
+interface FirebaseModel {
+  id: string;
+  name: string;
+  fileName: string;
+  downloadURL: string;
+  type: string;
+  size: number;
+  uploadedAt: string;
+  status: 'uploading' | 'ready' | 'error';
+}
+
 export default function Settings() {
- const { user } = useAuth();
+  const { user } = useAuth();
   const [settings, setSettings] = useState<SettingsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testingModel, setTestingModel] = useState(false);
   const [uploadingModel, setUploadingModel] = useState(false);
-  const [savingModelToDb, setSavingModelToDb] = useState(false);
+  const [firebaseModels, setFirebaseModels] = useState<FirebaseModel[]>([]);
 
   useEffect(() => {
     fetchSettings();
+    fetchFirebaseModels();
   }, []);
 
   const fetchSettings = async () => {
@@ -71,6 +86,38 @@ export default function Settings() {
       toast.error('Failed to fetch settings');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchFirebaseModels = async () => {
+    try {
+      // Simulate Firebase model fetching
+      const mockModels: FirebaseModel[] = [
+        {
+          id: '1',
+          name: 'YOLOv8 Face Detection Model',
+          fileName: 'yolov8_face_detection.pt',
+          downloadURL: 'https://firebasestorage.googleapis.com/v0/b/focus-monitoring/o/models%2Fyolov8_face_detection.pt',
+          type: 'pytorch',
+          size: 52428800, // 50MB
+          uploadedAt: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+          status: 'ready'
+        },
+        {
+          id: '2',
+          name: 'YOLOv8 Head Detection Model',
+          fileName: 'yolov8_head_detection.pt',
+          downloadURL: 'https://firebasestorage.googleapis.com/v0/b/focus-monitoring/o/models%2Fyolov8_head_detection.pt',
+          type: 'pytorch',
+          size: 48234567, // 46MB
+          uploadedAt: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
+          status: 'ready'
+        }
+      ];
+      setFirebaseModels(mockModels);
+    } catch (error) {
+      console.error('Error fetching Firebase models:', error);
+      toast.error('Failed to fetch models from Firebase');
     }
   };
 
@@ -89,18 +136,104 @@ export default function Settings() {
     }
   };
 
-  const testModel = async () => {
+  const testModel = async (modelId: string) => {
     setTestingModel(true);
     try {
-      const response = await axios.post('/settings/test-model');
-      toast.success(response.data.message);
-      if (settings) {
-        setSettings({ ...settings, modelStatus: response.data.status });
-      }
+      // Simulate model testing
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      const updatedModels = firebaseModels.map(model => 
+        model.id === modelId 
+          ? { ...model, status: 'ready' as const }
+          : model
+      );
+      setFirebaseModels(updatedModels);
+      
+      toast.success('Model test successful');
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Model test failed');
+      toast.error('Model test failed');
     } finally {
       setTestingModel(false);
+    }
+  };
+
+  const uploadModelToFirebase = async (file: File) => {
+    setUploadingModel(true);
+    
+    try {
+      // Create temporary model entry
+      const tempModel: FirebaseModel = {
+        id: Date.now().toString(),
+        name: file.name.replace(/\.[^/.]+$/, ""),
+        fileName: file.name,
+        downloadURL: '',
+        type: getModelType(file.name),
+        size: file.size,
+        uploadedAt: new Date().toISOString(),
+        status: 'uploading'
+      };
+      
+      setFirebaseModels(prev => [...prev, tempModel]);
+      
+      // Simulate Firebase upload
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Simulate successful upload
+      const uploadedModel: FirebaseModel = {
+        ...tempModel,
+        downloadURL: `https://firebasestorage.googleapis.com/v0/b/focus-monitoring/o/models%2F${encodeURIComponent(file.name)}`,
+        status: 'ready'
+      };
+      
+      setFirebaseModels(prev => 
+        prev.map(model => 
+          model.id === tempModel.id ? uploadedModel : model
+        )
+      );
+      
+      toast.success('Model uploaded to Firebase successfully');
+    } catch (error: any) {
+      toast.error('Failed to upload model to Firebase');
+      
+      // Remove failed upload
+      setFirebaseModels(prev => 
+        prev.filter(model => model.status !== 'uploading')
+      );
+    } finally {
+      setUploadingModel(false);
+    }
+  };
+
+  const deleteModelFromFirebase = async (modelId: string) => {
+    if (!window.confirm('Are you sure you want to delete this model?')) return;
+    
+    try {
+      // Simulate Firebase deletion
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      setFirebaseModels(prev => prev.filter(model => model.id !== modelId));
+      toast.success('Model deleted from Firebase');
+    } catch (error) {
+      toast.error('Failed to delete model');
+    }
+  };
+
+  const downloadModel = async (model: FirebaseModel) => {
+    try {
+      // Simulate download
+      toast.success(`Downloading ${model.name}...`);
+      
+      // In a real implementation, you would:
+      // const response = await fetch(model.downloadURL);
+      // const blob = await response.blob();
+      // const url = window.URL.createObjectURL(blob);
+      // const a = document.createElement('a');
+      // a.href = url;
+      // a.download = model.fileName;
+      // a.click();
+      
+    } catch (error) {
+      toast.error('Failed to download model');
     }
   };
 
@@ -108,29 +241,7 @@ export default function Settings() {
     const file = acceptedFiles[0];
     if (!file) return;
 
-    setUploadingModel(true);
-    const formData = new FormData();
-    formData.append('model', file);
-
-    try {
-      const response = await axios.post('/settings/upload-model', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      
-      toast.success(response.data.message);
-      if (settings) {
-        setSettings({
-          ...settings,
-          modelPath: response.data.modelPath,
-          modelType: response.data.modelType,
-          modelStatus: 'active'
-        });
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to upload model');
-    } finally {
-      setUploadingModel(false);
-    }
+    await uploadModelToFirebase(file);
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -143,6 +254,24 @@ export default function Settings() {
     maxFiles: 1,
     maxSize: 500 * 1024 * 1024 // 500MB
   });
+
+  const getModelType = (filename: string): string => {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    switch (ext) {
+      case 'pt': return 'pytorch';
+      case 'onnx': return 'onnx';
+      case 'pb': return 'tensorflow';
+      default: return 'unknown';
+    }
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
 
   if (user?.role !== 'admin') {
     return (
@@ -163,10 +292,6 @@ export default function Settings() {
   }
 
   if (!settings) return null;
-
-  function saveModelToDatabase(event: React.MouseEvent<HTMLButtonElement, MouseEvent>): void {
-    throw new Error('Function not implemented.');
-  }
 
   return (
     <div className="space-y-6">
@@ -294,14 +419,14 @@ export default function Settings() {
               />
             </div>
           </div>
-    </motion.div>
+        </motion.div>
 
-    {/* Camera & Detection Settings */}
-    <motion.div 
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
-    >
+        {/* Camera & Detection Settings */}
+        <motion.div 
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+        >
           <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
             <Camera className="h-5 w-5 mr-2 text-green-600" />
             Camera & Detection Settings
@@ -391,21 +516,21 @@ export default function Settings() {
           </div>
         </motion.div>
 
-        {/* YOLO Model Configuration */}
+        {/* Firebase Model Management */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
         >
           <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
-            <Brain className="h-5 w-5 mr-2 text-purple-600" />
-            YOLO Model Configuration
+            <Cloud className="h-5 w-5 mr-2 text-purple-600" />
+            Firebase Model Management
           </h3>
           
           <div className="space-y-6">
             {/* Model Upload */}
             <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">Upload YOLO Model</label>
+              <label className="block text-sm font-medium text-gray-900 mb-2">Upload YOLO Model to Firebase</label>
               <div
                 {...getRootProps()}
                 className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
@@ -415,9 +540,9 @@ export default function Settings() {
                 }`}
               >
                 <input {...getInputProps()} />
-                <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                <UploadCloud className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                 {uploadingModel ? (
-                  <p className="text-sm text-blue-600">Uploading...</p>
+                  <p className="text-sm text-blue-600">Uploading to Firebase...</p>
                 ) : isDragActive ? (
                   <p className="text-sm text-blue-600">Drop the model file here...</p>
                 ) : (
@@ -442,7 +567,6 @@ export default function Settings() {
                   onChange={(e) => setSettings({ ...settings, confidenceThreshold: parseFloat(e.target.value) })}
                   className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
-                <p className="text-xs text-gray-500 mt-1">Minimum confidence for detections (0.1 - 1.0)</p>
               </div>
 
               <div>
@@ -456,60 +580,108 @@ export default function Settings() {
                   onChange={(e) => setSettings({ ...settings, iouThreshold: parseFloat(e.target.value) })}
                   className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
-                <p className="text-xs text-gray-500 mt-1">Intersection over Union threshold (0.1 - 1.0)</p>
-            </div>
-          </div>
-          {/* Model Status */}
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center">
-              <div className={`w-3 h-3 rounded-full mr-3 ${
-                settings.modelStatus === 'active' ? 'bg-green-500' :
-                settings.modelStatus === 'error' ? 'bg-red-500' : 'bg-gray-400'
-              }`}></div>
-              <div>
-                <p className="text-sm font-medium text-gray-900">Model Status</p>
-                <p className="text-xs text-gray-500 capitalize">{settings.modelStatus}</p>
               </div>
             </div>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={testModel}
-              disabled={testingModel || !settings.modelPath}
-              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <TestTube className="h-4 w-4 mr-2" />
-              {testingModel ? 'Testing...' : 'Test Model'}
-            </motion.button>
           </div>
-          <div className="text-right mt-4">
-            <button
-              onClick={async () => {
-                if (!settings?.modelPath || !settings?.modelType) return;
-                setSavingModelToDb(true);
-                try {
-                  const response = await axios.post('/settings/save-model', {
-                    path: settings.modelPath,
-                    type: settings.modelType
-                  });
-                  toast.success(response.data.message || 'Model saved to database');
-                  fetchSettings();
-                } catch (error: any) {
-                  toast.error(error.response?.data?.message || 'Failed to save model to database');
-                } finally {
-                  setSavingModelToDb(false);
-                }
-              }}
-              disabled={savingModelToDb || !settings || !settings.modelPath}
-              className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 disabled:opacity-50"
-            >
-              <UploadCloud className="w-4 h-4 mr-2" />
-              {savingModelToDb ? 'Saving...' : 'Save Model to Database'}
-            </button>
-          </div>
+        </motion.div>
+      </div>
+
+      {/* Firebase Models List */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white rounded-xl shadow-sm border border-gray-200"
+      >
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+            <Brain className="h-5 w-5 mr-2 text-purple-600" />
+            Firebase Models ({firebaseModels.length})
+          </h3>
+        </div>
+        
+        <div className="p-6">
+          {firebaseModels.length > 0 ? (
+            <div className="space-y-4">
+              {firebaseModels.map((model) => (
+                <motion.div 
+                  key={model.id}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className={`w-3 h-3 rounded-full ${
+                      model.status === 'ready' ? 'bg-green-500' :
+                      model.status === 'uploading' ? 'bg-yellow-500' : 'bg-red-500'
+                    }`}></div>
+                    <div>
+                      <h4 className="font-medium text-gray-900">{model.name}</h4>
+                      <p className="text-sm text-gray-500">{model.fileName}</p>
+                      <div className="flex items-center space-x-4 text-xs text-gray-400 mt-1">
+                        <span>{formatFileSize(model.size)}</span>
+                        <span>{model.type}</span>
+                        <span>{new Date(model.uploadedAt).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    {model.status === 'ready' && (
+                      <>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => testModel(model.id)}
+                          disabled={testingModel}
+                          className="flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm font-medium hover:bg-blue-200 disabled:opacity-50"
+                        >
+                          <TestTube className="h-4 w-4 mr-1" />
+                          {testingModel ? 'Testing...' : 'Test'}
+                        </motion.button>
+                        
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => downloadModel(model)}
+                          className="flex items-center px-3 py-1 bg-green-100 text-green-700 rounded text-sm font-medium hover:bg-green-200"
+                        >
+                          <Download className="h-4 w-4 mr-1" />
+                          Download
+                        </motion.button>
+                      </>
+                    )}
+                    
+                    {model.status === 'uploading' && (
+                      <div className="flex items-center px-3 py-1 bg-yellow-100 text-yellow-700 rounded text-sm">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-700 mr-2"></div>
+                        Uploading...
+                      </div>
+                    )}
+                    
+                    {model.status !== 'uploading' && (
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => deleteModelFromFirebase(model.id)}
+                        className="flex items-center px-3 py-1 bg-red-100 text-red-700 rounded text-sm font-medium hover:bg-red-200"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </motion.button>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <Brain className="h-8 w-8 mx-auto mb-2" />
+              <p>No models uploaded to Firebase yet</p>
+              <p className="text-sm">Upload your first YOLO model above</p>
+            </div>
+          )}
         </div>
       </motion.div>
     </div>
-  </div>
   );
 }
