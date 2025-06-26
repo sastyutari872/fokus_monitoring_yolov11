@@ -14,9 +14,8 @@ import dashboardRoutes from './routes/dashboard.js';
 import settingsRoutes from './routes/settings.js';
 import liveMonitoringRoutes from './routes/liveMonitoring.js';
 import exportRoutes from './routes/export.js';
-import sessionRecordsRoutes from './routes/sessionRecords.js';
-import flaskIntegrationRoutes from './routes/flaskIntegration.js';
 import { createDummyData } from './utils/seedData.js';
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,8 +34,8 @@ if (!fs.existsSync(uploadsDir)) {
 
 // Middleware
 app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -51,8 +50,6 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/live-monitoring', liveMonitoringRoutes);
 app.use('/api/export', exportRoutes);
-app.use('/api/session-records', sessionRecordsRoutes);
-app.use('/api/flask', flaskIntegrationRoutes);
 
 // YOLO Integration endpoint
 app.post('/api/yolo-detection', (req, res) => {
@@ -97,7 +94,7 @@ const mongoURI = process.env.MONGODB_URI;
 
 if (!mongoURI) {
   console.error("❌ MONGODB_URI is not defined in .env file");
-  process.exit(1);
+  process.exit(1); // Stop server from running
 }
 
 mongoose.connect(mongoURI, {
@@ -116,5 +113,4 @@ mongoose.connect(mongoURI, {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/api/health`);
-  console.log(`Flask integration available at: http://localhost:${PORT}/api/flask`);
 });
