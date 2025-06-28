@@ -10,20 +10,29 @@ const router = express.Router();
 // Get dashboard overview
 router.get('/overview', auth, async (req, res) => {
   try {
+    let query = {};
+    
+    // Filter by user role
+    if (req.user.role === 'dosen') {
+      query.dosen_id = req.user._id;
+    }
+
     const totalKelas = await Kelas.countDocuments();
-    const totalMataKuliah = await MataKuliah.countDocuments();
-    const totalPertemuan = await Pertemuan.countDocuments();
+    const totalMataKuliah = await MataKuliah.countDocuments(
+      req.user.role === 'dosen' ? { dosen_id: req.user._id } : {}
+    );
+    const totalPertemuan = await Pertemuan.countDocuments(query);
     const totalDosen = await User.countDocuments({ role: 'dosen' });
 
     // Get recent meetings
-    const recentMeetings = await Pertemuan.find()
+    const recentMeetings = await Pertemuan.find(query)
       .populate('dosen_id', 'nama_lengkap')
       .populate('mata_kuliah_id', 'nama')
       .sort({ tanggal: -1 })
       .limit(5);
 
     // Get focus statistics
-    const allMeetings = await Pertemuan.find();
+    const allMeetings = await Pertemuan.find(query);
     const totalFocusData = allMeetings.reduce((acc, meeting) => {
       acc.totalFocus += meeting.hasil_akhir_kelas.fokus || 0;
       acc.count++;
@@ -36,6 +45,7 @@ router.get('/overview', auth, async (req, res) => {
 
     // Get class performance
     const classPerformance = await Pertemuan.aggregate([
+      ...(req.user.role === 'dosen' ? [{ $match: { dosen_id: req.user._id } }] : []),
       {
         $group: {
           _id: '$kelas',
@@ -47,6 +57,38 @@ router.get('/overview', auth, async (req, res) => {
       { $limit: 5 }
     ]);
 
+    // Get dosen performance (admin only)
+    let dosenPerformance = [];
+    if (req.user.role === 'admin') {
+      dosenPerformance = await Pertemuan.aggregate([
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'dosen_id',
+            foreignField: '_id',
+            as: 'dosen'
+          }
+        },
+        { $unwind: '$dosen' },
+        {
+          $group: {
+            _id: '$dosen_id',
+            nama_lengkap: { $first: '$dosen.nama_lengkap' },
+            averageFocus: { $avg: '$hasil_akhir_kelas.fokus' },
+            totalMeetings: { $sum: 1 },
+            totalClasses: { $addToSet: '$kelas' }
+          }
+        },
+        {
+          $addFields: {
+            totalClasses: { $size: '$totalClasses' }
+          }
+        },
+        { $sort: { averageFocus: -1 } },
+        { $limit: 8 }
+      ]);
+    }
+
     res.json({
       stats: {
         totalKelas,
@@ -56,7 +98,8 @@ router.get('/overview', auth, async (req, res) => {
         averageFocus: parseFloat(averageFocus)
       },
       recentMeetings,
-      classPerformance
+      classPerformance,
+      dosenPerformance
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -66,7 +109,15 @@ router.get('/overview', auth, async (req, res) => {
 // Get focus trends
 router.get('/focus-trends', auth, async (req, res) => {
   try {
+    let matchQuery = {};
+    
+    // Filter by user role
+    if (req.user.role === 'dosen') {
+      matchQuery.dosen_id = req.user._id;
+    }
+
     const focusTrends = await Pertemuan.aggregate([
+      { $match: matchQuery },
       {
         $group: {
           _id: {

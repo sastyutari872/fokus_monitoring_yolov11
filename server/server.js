@@ -16,6 +16,7 @@ import liveMonitoringRoutes from './routes/liveMonitoring.js';
 import exportRoutes from './routes/export.js';
 import sessionRecordsRoutes from './routes/sessionRecords.js';
 import flaskIntegrationRoutes from './routes/flaskIntegration.js';
+import jadwalRoutes from './routes/jadwal.js';
 import { createDummyData } from './utils/seedData.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -53,6 +54,7 @@ app.use('/api/live-monitoring', liveMonitoringRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/session-records', sessionRecordsRoutes);
 app.use('/api/flask', flaskIntegrationRoutes);
+app.use('/api/jadwal', jadwalRoutes);
 
 // YOLO Integration endpoint
 app.post('/api/yolo-detection', (req, res) => {

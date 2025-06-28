@@ -18,9 +18,10 @@ import MeetingDetail from './pages/MeetingDetail';
 import CreateMeeting from './pages/CreateMeeting';
 import LiveMonitoring from './pages/LiveMonitoring';
 import Settings from './pages/Settings';
+import Jadwal from './pages/Jadwal';
 import AnimatedBackground from './components/AnimatedBackground';
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
   const { user, loading } = useAuth();
   
   if (loading) {
@@ -31,7 +32,15 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
   
-  return user ? <>{children}</> : <Navigate to="/login" />;
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
+  
+  if (adminOnly && user.role !== 'admin') {
+    return <Navigate to="/dashboard" />;
+  }
+  
+  return <>{children}</>;
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
@@ -110,6 +119,14 @@ function App() {
               </ProtectedRoute>
             } />
             
+            <Route path="/jadwal" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Jadwal />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
             <Route path="/classes" element={
               <ProtectedRoute>
                 <Layout>
@@ -126,7 +143,7 @@ function App() {
               </ProtectedRoute>
             } />
             
-            <Route path="/subjects" element={
+            <Route path="/mata-kuliah" element={
               <ProtectedRoute>
                 <Layout>
                   <Subjects />
@@ -134,7 +151,7 @@ function App() {
               </ProtectedRoute>
             } />
             
-            <Route path="/subjects/:id" element={
+            <Route path="/mata-kuliah/:id" element={
               <ProtectedRoute>
                 <Layout>
                   <SubjectDetail />
@@ -167,7 +184,7 @@ function App() {
             } />
             
             <Route path="/users" element={
-              <ProtectedRoute>
+              <ProtectedRoute adminOnly>
                 <Layout>
                   <Users />
                 </Layout>
@@ -175,7 +192,7 @@ function App() {
             } />
             
             <Route path="/settings" element={
-              <ProtectedRoute>
+              <ProtectedRoute adminOnly>
                 <Layout>
                   <Settings />
                 </Layout>

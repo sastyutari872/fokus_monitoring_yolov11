@@ -15,7 +15,8 @@ import {
   Search,
   Settings,
   Video,
-  Zap
+  Zap,
+  CalendarDays
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -29,17 +30,27 @@ export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const navigation = [
+  const adminNavigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, color: 'text-blue-600' },
     { name: 'Live Monitoring', href: '/live-monitoring', icon: Video, color: 'text-red-600' },
+    { name: 'Schedule', href: '/jadwal', icon: CalendarDays, color: 'text-indigo-600' },
     { name: 'Classes', href: '/classes', icon: GraduationCap, color: 'text-green-600' },
-    { name: 'Subjects', href: '/subjects', icon: BookOpen, color: 'text-purple-600' },
+    { name: 'Mata Kuliah', href: '/mata-kuliah', icon: BookOpen, color: 'text-purple-600' },
     { name: 'Meetings', href: '/meetings', icon: Calendar, color: 'text-orange-600' },
-    ...(user?.role === 'admin' ? [
-      { name: 'Users', href: '/users', icon: Users, color: 'text-teal-600' },
-      { name: 'Settings', href: '/settings', icon: Settings, color: 'text-gray-600' }
-    ] : []),
+    { name: 'Users', href: '/users', icon: Users, color: 'text-teal-600' },
+    { name: 'Settings', href: '/settings', icon: Settings, color: 'text-gray-600' }
   ];
+
+  const dosenNavigation = [
+    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, color: 'text-blue-600' },
+    { name: 'Live Monitoring', href: '/live-monitoring', icon: Video, color: 'text-red-600' },
+    { name: 'Schedule', href: '/jadwal', icon: CalendarDays, color: 'text-indigo-600' },
+    { name: 'Classes', href: '/classes', icon: GraduationCap, color: 'text-green-600' },
+    { name: 'Mata Kuliah', href: '/mata-kuliah', icon: BookOpen, color: 'text-purple-600' },
+    { name: 'Meetings', href: '/meetings', icon: Calendar, color: 'text-orange-600' }
+  ];
+
+  const navigation = user?.role === 'admin' ? adminNavigation : dosenNavigation;
 
   const handleLogout = () => {
     logout();

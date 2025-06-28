@@ -1,6 +1,7 @@
 import express from 'express';
 import LiveSession from '../models/LiveSession.js';
 import Pertemuan from '../models/Pertemuan.js';
+import SessionRecord from '../models/SessionRecord.js';
 import { auth } from '../middleware/auth.js';
 import XLSX from 'xlsx';
 import PDFDocument from 'pdfkit';
@@ -121,6 +122,139 @@ router.get('/pdf/meeting/:meetingId', auth, async (req, res) => {
         doc.addPage();
       }
       doc.text(`${student.id_siswa}: ${student.persen_fokus}% (${student.status})`);
+    });
+
+    doc.end();
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Export session record to PDF
+router.get('/pdf/session/:sessionId', auth, async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    
+    const session = await SessionRecord.findById(sessionId)
+      .populate('dosen_id', 'nama_lengkap departemen');
+
+    if (!session) {
+      return res.status(404).json({ message: 'Session record not found' });
+    }
+
+    // Create PDF
+    const doc = new PDFDocument();
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="session-report-${sessionId}.pdf"`);
+    
+    doc.pipe(res);
+
+    // Header
+    doc.fontSize(20).text('Live Monitoring Session Report', { align: 'center' });
+    doc.moveDown();
+
+    // Session Info
+    doc.fontSize(14).text('Session Information', { underline: true });
+    doc.fontSize(12)
+       .text(`Session Name: ${session.sessionName}`)
+       .text(`Class: ${session.kelas}`)
+       .text(`Subject: ${session.mata_kuliah}`)
+       .text(`Date: ${session.tanggal.toLocaleDateString()}`)
+       .text(`Start Time: ${session.jam_mulai.toLocaleTimeString()}`)
+       .text(`End Time: ${session.jam_selesai.toLocaleTimeString()}`)
+       .text(`Duration: ${Math.round(session.durasi / 60000)} minutes`);
+    
+    doc.moveDown();
+
+    // Summary
+    doc.fontSize(14).text('Detection Summary', { underline: true });
+    doc.fontSize(12)
+       .text(`Total Students: ${session.seat_data.length}`)
+       .text(`Average Focus: ${session.detection_summary.average_focus_percentage.toFixed(2)}%`)
+       .text(`Peak Focus Duration: ${Math.round(session.detection_summary.peak_focus_time / 1000)} seconds`)
+       .text(`Total Detections: ${session.detection_summary.total_detections}`);
+
+    doc.moveDown();
+
+    // Student Details
+    doc.fontSize(14).text('Student Performance', { underline: true });
+    doc.fontSize(10);
+    
+    session.seat_data.forEach((student, index) => {
+      if (index % 15 === 0 && index > 0) {
+        doc.addPage();
+      }
+      doc.text(`${student.student_id}: ${student.focus_percentage}% focus (${student.final_status})`);
+    });
+
+    // Gesture Analysis
+    if (session.gesture_analysis && session.gesture_analysis.length > 0) {
+      doc.addPage();
+      doc.fontSize(14).text('Gesture Analysis', { underline: true });
+      doc.fontSize(10);
+      
+      session.gesture_analysis.forEach((gesture) => {
+        doc.text(`${gesture.gesture_type}: ${gesture.total_count} occurrences (${gesture.percentage_of_session.toFixed(1)}% of session)`);
+      });
+    }
+
+    doc.end();
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Export class performance to PDF
+router.get('/pdf/class/:classId', auth, async (req, res) => {
+  try {
+    const { classId } = req.params;
+    
+    const meetings = await Pertemuan.find({ kelas: classId })
+      .populate('mata_kuliah_id', 'nama kode')
+      .populate('dosen_id', 'nama_lengkap')
+      .sort({ tanggal: -1 });
+
+    if (meetings.length === 0) {
+      return res.status(404).json({ message: 'No meetings found for this class' });
+    }
+
+    // Create PDF
+    const doc = new PDFDocument();
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="class-report-${classId}.pdf"`);
+    
+    doc.pipe(res);
+
+    // Header
+    doc.fontSize(20).text(`Class Performance Report - ${classId}`, { align: 'center' });
+    doc.moveDown();
+
+    // Summary
+    const averageFocus = meetings.reduce((sum, m) => sum + m.hasil_akhir_kelas.fokus, 0) / meetings.length;
+    const totalStudents = Math.max(...meetings.map(m => m.hasil_akhir_kelas.jumlah_hadir));
+
+    doc.fontSize(14).text('Class Summary', { underline: true });
+    doc.fontSize(12)
+       .text(`Total Meetings: ${meetings.length}`)
+       .text(`Average Focus Rate: ${averageFocus.toFixed(2)}%`)
+       .text(`Total Students: ${totalStudents}`)
+       .text(`Report Generated: ${new Date().toLocaleDateString()}`);
+
+    doc.moveDown();
+
+    // Meeting Details
+    doc.fontSize(14).text('Meeting History', { underline: true });
+    doc.fontSize(10);
+    
+    meetings.forEach((meeting, index) => {
+      if (index % 20 === 0 && index > 0) {
+        doc.addPage();
+      }
+      doc.text(`Meeting ${meeting.pertemuan_ke} - ${meeting.mata_kuliah} (${meeting.tanggal.toLocaleDateString()}): ${meeting.hasil_akhir_kelas.fokus.toFixed(1)}% focus`);
     });
 
     doc.end();

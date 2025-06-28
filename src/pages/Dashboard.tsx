@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { motion } from 'framer-motion';
 import { 
-   
   BookOpen, 
   Calendar, 
   GraduationCap,
   TrendingUp,
   Eye,
   Clock,
-  BarChart3
+  BarChart3,
+  Users,
+  Award,
+  Target
 } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 
 interface DashboardStats {
@@ -42,6 +45,14 @@ interface ClassPerformance {
   totalMeetings: number;
 }
 
+interface DosenPerformance {
+  _id: string;
+  nama_lengkap: string;
+  averageFocus: number;
+  totalMeetings: number;
+  totalClasses: number;
+}
+
 interface FocusTrend {
   month: string;
   focus: number;
@@ -52,6 +63,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentMeetings, setRecentMeetings] = useState<RecentMeeting[]>([]);
   const [classPerformance, setClassPerformance] = useState<ClassPerformance[]>([]);
+  const [dosenPerformance, setDosenPerformance] = useState<DosenPerformance[]>([]);
   const [focusTrends, setFocusTrends] = useState<FocusTrend[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
@@ -70,6 +82,7 @@ export default function Dashboard() {
       setStats(overviewRes.data.stats);
       setRecentMeetings(overviewRes.data.recentMeetings);
       setClassPerformance(overviewRes.data.classPerformance);
+      setDosenPerformance(overviewRes.data.dosenPerformance || []);
       setFocusTrends(trendsRes.data);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -84,35 +97,45 @@ export default function Dashboard() {
       value: stats?.totalKelas || 0,
       icon: GraduationCap,
       color: 'bg-blue-500',
-      change: '+2.5%'
+      change: '+2.5%',
+      bgGradient: 'from-blue-500 to-blue-600'
     },
     {
       title: 'Subjects',
       value: stats?.totalMataKuliah || 0,
       icon: BookOpen,
       color: 'bg-green-500',
-      change: '+1.2%'
+      change: '+1.2%',
+      bgGradient: 'from-green-500 to-green-600'
     },
     {
       title: 'Meetings',
       value: stats?.totalPertemuan || 0,
       icon: Calendar,
       color: 'bg-purple-500',
-      change: '+12.3%'
+      change: '+12.3%',
+      bgGradient: 'from-purple-500 to-purple-600'
     },
     {
       title: 'Average Focus',
       value: `${stats?.averageFocus || 0}%`,
       icon: TrendingUp,
       color: 'bg-orange-500',
-      change: '+5.1%'
+      change: '+5.1%',
+      bgGradient: 'from-orange-500 to-orange-600'
     }
   ];
 
-  const pieData = classPerformance.slice(0, 4).map((item, index) => ({
+  const pieData = classPerformance.slice(0, 5).map((item, index) => ({
     name: item._id,
     value: Math.round(item.averageFocus),
-    color: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'][index]
+    color: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'][index]
+  }));
+
+  const dosenBarData = dosenPerformance.slice(0, 8).map(dosen => ({
+    name: dosen.nama_lengkap.split(' ')[0], // First name only for chart
+    focus: Math.round(dosen.averageFocus),
+    meetings: dosen.totalMeetings
   }));
 
   if (loading) {
@@ -126,33 +149,52 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Welcome Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-xl p-6 text-white">
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 rounded-xl p-6 text-white"
+      >
         <h1 className="text-2xl font-bold">Welcome back, {user?.nama_lengkap}!</h1>
-        <p className="mt-2 opacity-90">Here's what's happening with your classes today.</p>
-      </div>
+        <p className="mt-2 opacity-90">
+          {user?.role === 'admin' 
+            ? "Here's an overview of the focus monitoring system performance."
+            : "Here's what's happening with your classes today."
+          }
+        </p>
+      </motion.div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {statCards.map((card, index) => (
-          <div key={index} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <motion.div 
+            key={index}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
+            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">{card.title}</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">{card.value}</p>
                 <p className="text-sm text-green-600 mt-1">{card.change}</p>
               </div>
-              <div className={`${card.color} p-3 rounded-lg`}>
+              <div className={`bg-gradient-to-r ${card.bgGradient} p-3 rounded-lg`}>
                 <card.icon className="h-6 w-6 text-white" />
               </div>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Focus Trends */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <motion.div 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+        >
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-900">Focus Trends</h3>
             <BarChart3 className="h-5 w-5 text-gray-400" />
@@ -172,10 +214,14 @@ export default function Dashboard() {
               />
             </LineChart>
           </ResponsiveContainer>
-        </div>
+        </motion.div>
 
         {/* Class Performance */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <motion.div 
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+        >
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-900">Top Classes by Focus</h3>
             <Eye className="h-5 w-5 text-gray-400" />
@@ -205,15 +251,117 @@ export default function Dashboard() {
                   className="w-3 h-3 rounded-full" 
                   style={{ backgroundColor: entry.color }}
                 ></div>
-                <span className="text-sm text-gray-600">{entry.name}</span>
+                <span className="text-sm text-gray-600">{entry.name}: {entry.value}%</span>
               </div>
             ))}
           </div>
-        </div>
+        </motion.div>
       </div>
 
+      {/* Instructor Performance (Admin Only) */}
+      {user?.role === 'admin' && dosenPerformance.length > 0 && (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-gray-900">Instructor Performance</h3>
+            <Award className="h-5 w-5 text-gray-400" />
+          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={dosenBarData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="focus" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </motion.div>
+      )}
+
+      {/* Performance Comparison (Admin Only) */}
+      {user?.role === 'admin' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Top Performing Classes */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-gray-900">Top Performing Classes</h3>
+              <Target className="h-5 w-5 text-gray-400" />
+            </div>
+            <div className="space-y-4">
+              {classPerformance.slice(0, 5).map((kelas, index) => (
+                <div key={kelas._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${
+                      index === 0 ? 'bg-yellow-500' : 
+                      index === 1 ? 'bg-gray-400' : 
+                      index === 2 ? 'bg-orange-500' : 'bg-blue-500'
+                    }`}>
+                      {index + 1}
+                    </div>
+                    <div className="ml-3">
+                      <p className="font-medium text-gray-900">{kelas._id}</p>
+                      <p className="text-sm text-gray-500">{kelas.totalMeetings} meetings</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-green-600">{Math.round(kelas.averageFocus)}%</p>
+                    <p className="text-xs text-gray-500">avg focus</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Top Performing Instructors */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-gray-900">Top Performing Instructors</h3>
+              <Users className="h-5 w-5 text-gray-400" />
+            </div>
+            <div className="space-y-4">
+              {dosenPerformance.slice(0, 5).map((dosen, index) => (
+                <div key={dosen._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${
+                      index === 0 ? 'bg-yellow-500' : 
+                      index === 1 ? 'bg-gray-400' : 
+                      index === 2 ? 'bg-orange-500' : 'bg-blue-500'
+                    }`}>
+                      {index + 1}
+                    </div>
+                    <div className="ml-3">
+                      <p className="font-medium text-gray-900">{dosen.nama_lengkap}</p>
+                      <p className="text-sm text-gray-500">{dosen.totalMeetings} meetings, {dosen.totalClasses} classes</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-green-600">{Math.round(dosen.averageFocus)}%</p>
+                    <p className="text-xs text-gray-500">avg focus</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       {/* Recent Meetings */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white rounded-xl shadow-sm border border-gray-200"
+      >
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-900">Recent Meetings</h3>
@@ -261,9 +409,12 @@ export default function Dashboard() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="flex-1 bg-gray-200 rounded-full h-2 mr-2">
+                      <div className="flex-1 bg-gray-200 rounded-full h-2 mr-2 max-w-20">
                         <div 
-                          className="bg-blue-600 h-2 rounded-full" 
+                          className={`h-2 rounded-full ${
+                            meeting.hasil_akhir_kelas.fokus >= 80 ? 'bg-green-500' :
+                            meeting.hasil_akhir_kelas.fokus >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+                          }`}
                           style={{ width: `${meeting.hasil_akhir_kelas.fokus}%` }}
                         ></div>
                       </div>
@@ -280,7 +431,7 @@ export default function Dashboard() {
             </tbody>
           </table>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
