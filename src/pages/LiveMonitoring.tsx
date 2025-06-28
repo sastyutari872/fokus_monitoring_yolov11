@@ -20,8 +20,9 @@ import {
   Upload,
   Calendar,
   User,
-  FileText,
-  AlertCircle
+  CheckCircle,
+  AlertCircle,
+  XCircle
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import axios from 'axios';
@@ -35,7 +36,7 @@ interface SeatPosition {
   width: number;
   height: number;
   is_occupied: boolean;
-  student_id: string;
+  student_id: string | null;
   face_detected: boolean;
   gesture_type: string;
   confidence: number;
@@ -57,21 +58,6 @@ interface DetectionData {
   seatData: SeatPosition[];
 }
 
-interface Schedule {
-  _id: string;
-  kelas: string;
-  mata_kuliah: string;
-  mata_kuliah_id: string;
-  dosen_id: string;
-  tanggal: string;
-  jam_mulai: string;
-  jam_selesai: string;
-  durasi: number;
-  pertemuan_ke: number;
-  topik: string;
-  seat_positions?: SeatPosition[];
-}
-
 interface LiveSession {
   _id: string;
   sessionId: string;
@@ -80,6 +66,7 @@ interface LiveSession {
   startTime: string;
   isActive: boolean;
   detectionData: DetectionData[];
+  seatPositions: SeatPosition[];
   summary: {
     averageFocus: number;
     peakFocus: number;
@@ -92,12 +79,28 @@ interface CameraDevice {
   label: string;
 }
 
-interface ModelInfo {
-  id: string;
+interface Schedule {
+  _id: string;
+  kelas: string;
+  mata_kuliah: string;
+  mata_kuliah_id: string;
+  dosen_id: string;
+  dosen_name: string;
+  tanggal: string;
+  jam_mulai: string;
+  jam_selesai: string;
+  durasi: number;
+  pertemuan_ke: number;
+  topik: string;
+  ruangan: string;
+  status: string;
+}
+
+interface ModelFile {
   name: string;
   path: string;
-  type: string;
-  status: string;
+  size: number;
+  uploadedAt: string;
 }
 
 export default function LiveMonitoring() {
@@ -109,7 +112,7 @@ export default function LiveMonitoring() {
   const [detectionData, setDetectionData] = useState<DetectionData[]>([]);
   
   // Configuration
-  const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
+  const [selectedSchedule, setSelectedSchedule] = useState('');
   const [selectedModel, setSelectedModel] = useState('');
   const [sessionName, setSessionName] = useState('');
   
@@ -124,15 +127,14 @@ export default function LiveMonitoring() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentSeat, setCurrentSeat] = useState<Partial<SeatPosition> | null>(null);
   const [isLabellingMode, setIsLabellingMode] = useState(false);
-  const [editingSeatId, setEditingSeatId] = useState<number | null>(null);
   
   // Data
   const [schedules, setSchedules] = useState<Schedule[]>([]);
-  const [models, setModels] = useState<ModelInfo[]>([]);
-  const [savedSessions, setSavedSessions] = useState([]);
+  const [models, setModels] = useState<ModelFile[]>([]);
   
-  // Flask Integration
-  const [flaskStatus, setFlaskStatus] = useState<'inactive' | 'initializing' | 'active' | 'error'>('inactive');
+  // Flask Status
+  const [flaskStatus, setFlaskStatus] = useState<'disconnected' | 'connected' | 'error'>('disconnected');
+  const [modelStatus, setModelStatus] = useState<'inactive' | 'loading' | 'active' | 'error'>('inactive');
   const [flaskError, setFlaskError] = useState<string>('');
   
   // Refs
@@ -144,7 +146,6 @@ export default function LiveMonitoring() {
     getCameraDevices();
     fetchSchedules();
     fetchModels();
-    fetchSavedSessions();
     checkFlaskStatus();
     
     return () => {
@@ -196,114 +197,26 @@ export default function LiveMonitoring() {
 
   const fetchModels = async () => {
     try {
-      const response = await axios.get('/settings');
-      const settings = response.data;
-      
-      // Mock models for demonstration
-      const mockModels: ModelInfo[] = [
-        {
-          id: '1',
-          name: 'YOLOv8 Focus Detection',
-          path: '/models/yolov8_focus.pt',
-          type: 'pytorch',
-          status: 'ready'
-        },
-        {
-          id: '2',
-          name: 'YOLOv8 Gesture Recognition',
-          path: '/models/yolov8_gesture.pt',
-          type: 'pytorch',
-          status: 'ready'
-        }
-      ];
-      setModels(mockModels);
-      if (mockModels.length > 0) {
-        setSelectedModel(mockModels[0].id);
+      const response = await axios.get('/api/models/list');
+      setModels(response.data);
+      if (response.data.length > 0) {
+        setSelectedModel(response.data[0].path);
       }
     } catch (error) {
       console.error('Error fetching models:', error);
-    }
-  };
-
-  const fetchSavedSessions = async () => {
-    try {
-      const response = await axios.get('/session-records');
-      setSavedSessions(response.data);
-    } catch (error) {
-      console.error('Error fetching saved sessions:', error);
+      toast.error('Failed to fetch available models');
     }
   };
 
   const checkFlaskStatus = async () => {
     try {
-      const response = await axios.get('/flask/model-status');
-      setFlaskStatus(response.data.status === 'active' ? 'active' : 'inactive');
+      const response = await axios.get('/api/flask/status');
+      setFlaskStatus('connected');
+      setFlaskError('');
     } catch (error) {
-      console.error('Flask server not available:', error);
       setFlaskStatus('error');
-      setFlaskError('Flask server not available. Please start the Flask server.');
-    }
-  };
-
-  // Flask Integration Functions
-  const initializeFlaskModel = async () => {
-    if (!selectedModel) {
-      toast.error('Please select a model first');
-      return false;
-    }
-
-    setFlaskStatus('initializing');
-    setFlaskError('');
-
-    try {
-      const selectedModelData = models.find(m => m.id === selectedModel);
-      if (!selectedModelData) {
-        throw new Error('Selected model not found');
-      }
-
-      console.log('Initializing Flask model:', selectedModelData);
-
-      const response = await axios.post('/flask/initialize-model', {
-        model_path: selectedModelData.path,
-        model_type: selectedModelData.type,
-        confidence_threshold: 0.5,
-        iou_threshold: 0.4
-      });
-
-      if (response.data.success) {
-        setFlaskStatus('active');
-        toast.success('Model initialized successfully');
-        return true;
-      } else {
-        throw new Error(response.data.message || 'Model initialization failed');
-      }
-    } catch (error: any) {
-      console.error('Flask model initialization error:', error);
-      setFlaskStatus('error');
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to initialize model';
-      setFlaskError(errorMessage);
-      toast.error(`Model initialization failed: ${errorMessage}`);
-      return false;
-    }
-  };
-
-  const processFrameWithFlask = async (frameData: string) => {
-    try {
-      const response = await axios.post('/flask/detect-frame', {
-        frame_data: frameData,
-        seat_positions: seatPositions,
-        session_id: currentSession?.sessionId
-      });
-
-      if (response.data.success) {
-        return response.data.updated_seats;
-      } else {
-        console.error('Frame processing failed:', response.data.message);
-        return null;
-      }
-    } catch (error: any) {
-      console.error('Frame processing error:', error);
-      return null;
+      setFlaskError('Flask server not responding. Please ensure Flask server is running on port 5001.');
+      console.error('Flask status check failed:', error);
     }
   };
 
@@ -343,6 +256,39 @@ export default function LiveMonitoring() {
     toast.success('Camera stopped');
   };
 
+  // Flask Model Functions
+  const initializeFlaskModel = async () => {
+    if (!selectedModel) {
+      toast.error('Please select a model first');
+      return false;
+    }
+
+    setModelStatus('loading');
+    try {
+      const response = await axios.post('/api/flask/initialize-model', {
+        model_path: selectedModel,
+        model_type: 'pytorch',
+        confidence_threshold: 0.5,
+        iou_threshold: 0.4
+      });
+
+      if (response.data.success) {
+        setModelStatus('active');
+        toast.success('Model initialized successfully');
+        return true;
+      } else {
+        throw new Error(response.data.message || 'Model initialization failed');
+      }
+    } catch (error: any) {
+      setModelStatus('error');
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to initialize model';
+      setFlaskError(errorMessage);
+      toast.error(`Model initialization failed: ${errorMessage}`);
+      console.error('Flask model initialization error:', error);
+      return false;
+    }
+  };
+
   // Seat Labelling Functions
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isLabellingMode || !cameraStream) return;
@@ -364,7 +310,7 @@ export default function LiveMonitoring() {
       is_occupied: false,
       student_id: `Student-${seatPositions.length + 1}`,
       face_detected: false,
-      gesture_type: 'none',
+      gesture_type: 'unknown',
       confidence: 0,
       focus_start_time: null,
       total_focus_duration: 0
@@ -401,9 +347,9 @@ export default function LiveMonitoring() {
         width: Math.abs(currentSeat.width || 0),
         height: Math.abs(currentSeat.height || 0),
         is_occupied: false,
-        student_id: currentSeat.student_id || `Student-${seatPositions.length + 1}`,
+        student_id: `Student-${seatPositions.length + 1}`,
         face_detected: false,
-        gesture_type: 'none',
+        gesture_type: 'unknown',
         confidence: 0,
         focus_start_time: null,
         total_focus_duration: 0
@@ -441,7 +387,7 @@ export default function LiveMonitoring() {
           is_occupied: false,
           student_id: `Student-${seatId}`,
           face_detected: false,
-          gesture_type: 'none',
+          gesture_type: 'unknown',
           confidence: 0,
           focus_start_time: null,
           total_focus_duration: 0
@@ -459,14 +405,6 @@ export default function LiveMonitoring() {
     toast.success('All seats cleared');
   };
 
-  const updateStudentId = (seatId: number, newStudentId: string) => {
-    setSeatPositions(prev => prev.map(seat => 
-      seat.seat_id === seatId 
-        ? { ...seat, student_id: newStudentId }
-        : seat
-    ));
-  };
-
   // Canvas Drawing
   const drawCanvas = () => {
     const canvas = canvasRef.current;
@@ -482,14 +420,12 @@ export default function LiveMonitoring() {
       let strokeColor = '#3B82F6'; // Default blue
       let fillColor = 'rgba(59, 130, 246, 0.1)';
       
-      if (seat.face_detected) {
-        if (seat.gesture_type === 'focused') {
-          strokeColor = '#10B981'; // Green for focused
-          fillColor = 'rgba(16, 185, 129, 0.2)';
-        } else {
-          strokeColor = '#F59E0B'; // Orange for detected but not focused
-          fillColor = 'rgba(245, 158, 11, 0.2)';
-        }
+      if (seat.face_detected && seat.gesture_type === 'focused') {
+        strokeColor = '#10B981'; // Green for focused
+        fillColor = 'rgba(16, 185, 129, 0.2)';
+      } else if (seat.face_detected && seat.gesture_type !== 'focused') {
+        strokeColor = '#F59E0B'; // Orange for detected but not focused
+        fillColor = 'rgba(245, 158, 11, 0.2)';
       } else if (seat.is_occupied) {
         strokeColor = '#EF4444'; // Red for occupied but no face
         fillColor = 'rgba(239, 68, 68, 0.2)';
@@ -506,13 +442,11 @@ export default function LiveMonitoring() {
       ctx.font = '12px Arial';
       ctx.fillText(`S${seat.seat_id}`, seat.x + 5, seat.y + 15);
       
-      // Draw student ID
-      ctx.font = '10px Arial';
-      ctx.fillText(seat.student_id, seat.x + 5, seat.y + 30);
-      
-      // Draw gesture type if detected
-      if (seat.gesture_type && seat.gesture_type !== 'none') {
-        ctx.fillText(seat.gesture_type, seat.x + 5, seat.y + 45);
+      // Draw gesture type
+      if (seat.gesture_type && seat.gesture_type !== 'unknown') {
+        ctx.fillStyle = strokeColor;
+        ctx.font = '10px Arial';
+        ctx.fillText(seat.gesture_type, seat.x + 5, seat.y + 30);
       }
       
       // Draw focus duration if available
@@ -559,8 +493,13 @@ export default function LiveMonitoring() {
 
   // Monitoring Functions
   const startMonitoring = async () => {
-    if (!selectedSchedule || !selectedModel) {
-      toast.error('Please select schedule and model');
+    if (!selectedSchedule) {
+      toast.error('Please select a schedule');
+      return;
+    }
+
+    if (!selectedModel) {
+      toast.error('Please select a model');
       return;
     }
 
@@ -580,14 +519,19 @@ export default function LiveMonitoring() {
         return;
       }
 
+      const schedule = schedules.find(s => s._id === selectedSchedule);
+      if (!schedule) {
+        toast.error('Selected schedule not found');
+        return;
+      }
+
       const response = await axios.post('/live-monitoring/start', {
-        kelas: selectedSchedule.kelas,
-        mata_kuliah_id: selectedSchedule.mata_kuliah_id,
-        mata_kuliah: selectedSchedule.mata_kuliah,
-        sessionName: sessionName || `${selectedSchedule.kelas} - ${selectedSchedule.mata_kuliah}`,
+        kelas: schedule.kelas,
+        mata_kuliah_id: schedule.mata_kuliah_id,
+        mata_kuliah: schedule.mata_kuliah,
+        sessionName: sessionName || `${schedule.mata_kuliah} - ${schedule.kelas}`,
         seatPositions,
-        modelId: selectedModel,
-        scheduleId: selectedSchedule._id
+        modelPath: selectedModel
       });
 
       setCurrentSession(response.data);
@@ -595,8 +539,8 @@ export default function LiveMonitoring() {
       setIsLabellingMode(false);
       toast.success('Live monitoring started');
 
-      // Start real-time detection with Flask
-      startRealTimeDetection(response.data.sessionId);
+      // Start face detection with Flask
+      startFlaskDetection(response.data.sessionId);
     } catch (error) {
       toast.error('Failed to start monitoring');
       console.error('Start monitoring error:', error);
@@ -613,37 +557,34 @@ export default function LiveMonitoring() {
 
       await axios.post(`/live-monitoring/stop/${currentSession.sessionId}`);
       
-      // Save to meeting record
-      await saveMeetingRecord();
-      
       // Export data automatically
       await exportSessionData();
       
       setIsMonitoring(false);
       setCurrentSession(null);
       setDetectionData([]);
-      setFlaskStatus('inactive');
+      setModelStatus('inactive');
       
       // Reset seat focus data
       setSeatPositions(prev => prev.map(seat => ({
         ...seat,
         face_detected: false,
-        gesture_type: 'none',
+        gesture_type: 'unknown',
         confidence: 0,
         focus_start_time: null,
         total_focus_duration: 0
       })));
       
-      toast.success('Live monitoring stopped and data saved');
+      toast.success('Live monitoring stopped and data exported');
     } catch (error) {
       toast.error('Failed to stop monitoring');
       console.error('Stop monitoring error:', error);
     }
   };
 
-  const startRealTimeDetection = (sessionId: string) => {
+  const startFlaskDetection = (sessionId: string) => {
     detectionIntervalRef.current = setInterval(async () => {
-      if (!isMonitoring || !videoRef.current || !canvasRef.current) {
+      if (!isMonitoring || !videoRef.current) {
         if (detectionIntervalRef.current) {
           clearInterval(detectionIntervalRef.current);
         }
@@ -662,69 +603,56 @@ export default function LiveMonitoring() {
         
         const frameData = canvas.toDataURL('image/jpeg', 0.8);
 
-        // Process frame with Flask
-        const updatedSeats = await processFrameWithFlask(frameData);
-        
-        if (updatedSeats) {
+        // Send frame to Flask for detection
+        const response = await axios.post('/api/flask/detect-frame', {
+          frameData,
+          seatPositions,
+          sessionId
+        });
+
+        if (response.data.success) {
+          const updatedSeats = response.data.updated_seats;
           const currentTime = Date.now();
-          
+
           // Update seat positions with detection results
-          const processedSeats = seatPositions.map(seat => {
-            const detection = updatedSeats.find((d: any) => d.seat_id === seat.seat_id);
-            
-            if (detection) {
-              let newSeat = { ...seat };
-              
-              if (detection.face_detected && detection.gesture_type === 'focused') {
-                if (!seat.face_detected || seat.gesture_type !== 'focused') {
-                  // Just became focused
-                  newSeat.focus_start_time = currentTime;
-                }
-                newSeat.face_detected = true;
-                newSeat.gesture_type = 'focused';
-                newSeat.is_occupied = true;
-                newSeat.confidence = detection.confidence;
-              } else if (detection.face_detected) {
-                // Face detected but not focused
-                if (seat.face_detected && seat.gesture_type === 'focused' && seat.focus_start_time) {
-                  // Was focused, now not focused - add to total duration
-                  newSeat.total_focus_duration += currentTime - seat.focus_start_time;
-                }
-                newSeat.face_detected = true;
-                newSeat.gesture_type = detection.gesture_type || 'not_focused';
-                newSeat.is_occupied = true;
-                newSeat.confidence = detection.confidence;
+          const newSeats = updatedSeats.map((seat: any) => {
+            const existingSeat = seatPositions.find(s => s.seat_id === seat.seat_id);
+            let newSeat = { ...seat };
+
+            if (existingSeat) {
+              // Handle focus duration tracking
+              if (seat.gesture_type === 'focused' && !existingSeat.face_detected) {
+                // Just started focusing
+                newSeat.focus_start_time = currentTime;
+              } else if (seat.gesture_type !== 'focused' && existingSeat.face_detected && existingSeat.focus_start_time) {
+                // Stopped focusing
+                newSeat.total_focus_duration = existingSeat.total_focus_duration + (currentTime - existingSeat.focus_start_time);
                 newSeat.focus_start_time = null;
+              } else if (seat.gesture_type === 'focused' && existingSeat.focus_start_time) {
+                // Continue focusing
+                newSeat.total_focus_duration = existingSeat.total_focus_duration;
+                newSeat.focus_start_time = existingSeat.focus_start_time;
               } else {
-                // No face detected
-                if (seat.face_detected && seat.gesture_type === 'focused' && seat.focus_start_time) {
-                  // Was focused, now absent - add to total duration
-                  newSeat.total_focus_duration += currentTime - seat.focus_start_time;
-                }
-                newSeat.face_detected = false;
-                newSeat.gesture_type = 'absent';
-                newSeat.is_occupied = false;
-                newSeat.confidence = 0;
+                // Not focusing
+                newSeat.total_focus_duration = existingSeat.total_focus_duration;
                 newSeat.focus_start_time = null;
               }
-              
-              return newSeat;
             }
-            
-            return seat;
+
+            return newSeat;
           });
 
-          setSeatPositions(processedSeats);
+          setSeatPositions(newSeats);
 
           // Calculate detection statistics
-          const totalDetections = processedSeats.filter(seat => seat.is_occupied).length;
-          const focusedCount = processedSeats.filter(seat => seat.gesture_type === 'focused').length;
+          const totalDetections = newSeats.filter((seat: any) => seat.face_detected).length;
+          const focusedCount = newSeats.filter((seat: any) => seat.gesture_type === 'focused').length;
           const notFocusedCount = totalDetections - focusedCount;
-          const sleepingCount = processedSeats.filter(seat => seat.gesture_type === 'sleeping').length;
-          const phoneUsingCount = processedSeats.filter(seat => seat.gesture_type === 'using_phone').length;
-          const chattingCount = processedSeats.filter(seat => seat.gesture_type === 'chatting').length;
-          const yawningCount = processedSeats.filter(seat => seat.gesture_type === 'yawning').length;
-          const writingCount = processedSeats.filter(seat => seat.gesture_type === 'writing').length;
+          const sleepingCount = newSeats.filter((seat: any) => seat.gesture_type === 'sleeping').length;
+          const phoneUsingCount = newSeats.filter((seat: any) => seat.gesture_type === 'using_phone').length;
+          const chattingCount = newSeats.filter((seat: any) => seat.gesture_type === 'chatting').length;
+          const yawningCount = newSeats.filter((seat: any) => seat.gesture_type === 'yawning').length;
+          const writingCount = newSeats.filter((seat: any) => seat.gesture_type === 'writing').length;
           const focusPercentage = totalDetections > 0 ? Math.round((focusedCount / totalDetections) * 100) : 0;
 
           const newDetectionData: DetectionData = {
@@ -738,7 +666,7 @@ export default function LiveMonitoring() {
             yawningCount,
             writingCount,
             focusPercentage,
-            seatData: processedSeats
+            seatData: newSeats
           };
 
           setDetectionData(prev => [...prev.slice(-19), newDetectionData]);
@@ -749,76 +677,36 @@ export default function LiveMonitoring() {
         }
 
       } catch (error) {
-        console.error('Real-time detection error:', error);
+        console.error('Flask detection error:', error);
       }
     }, 2000);
-  };
-
-  const saveMeetingRecord = async () => {
-    if (!currentSession || !selectedSchedule) return;
-
-    try {
-      // Calculate focus data for each student
-      const dataFokus = seatPositions.map(seat => {
-        const sessionDuration = Date.now() - new Date(currentSession.startTime).getTime();
-        const focusPercentage = sessionDuration > 0 ? Math.round((seat.total_focus_duration / sessionDuration) * 100) : 0;
-        
-        // Generate focus pattern (simplified)
-        const sessions = Math.ceil(sessionDuration / 300000); // 5-minute sessions
-        const fokusPattern = Array(sessions).fill(0).map(() => 
-          Math.random() < (focusPercentage / 100) ? 1 : 0
-        );
-
-        return {
-          id_siswa: seat.student_id,
-          fokus: fokusPattern,
-          jumlah_sesi_fokus: fokusPattern.filter(f => f === 1).length,
-          durasi_fokus: Math.round(seat.total_focus_duration / 60000), // in minutes
-          waktu_hadir: Math.round(sessionDuration / 60000), // in minutes
-          persen_fokus: focusPercentage,
-          persen_tidak_fokus: 100 - focusPercentage,
-          status: focusPercentage >= 80 ? 'Baik' : focusPercentage >= 60 ? 'Cukup' : 'Kurang'
-        };
-      });
-
-      const meetingData = {
-        tanggal: selectedSchedule.tanggal,
-        pertemuan_ke: selectedSchedule.pertemuan_ke,
-        kelas: selectedSchedule.kelas,
-        mata_kuliah: selectedSchedule.mata_kuliah,
-        mata_kuliah_id: selectedSchedule.mata_kuliah_id,
-        dosen_id: selectedSchedule.dosen_id,
-        durasi_pertemuan: selectedSchedule.durasi,
-        topik: selectedSchedule.topik,
-        data_fokus: dataFokus,
-        catatan: `Live monitoring session: ${currentSession.sessionId}`
-      };
-
-      await axios.post('/pertemuan', meetingData);
-      toast.success('Meeting record saved successfully');
-    } catch (error) {
-      console.error('Error saving meeting record:', error);
-      toast.error('Failed to save meeting record');
-    }
   };
 
   const exportSessionData = async () => {
     if (!currentSession) return;
 
     try {
-      // Save to session records
-      await axios.post('/session-records', {
+      const schedule = schedules.find(s => s._id === selectedSchedule);
+      if (!schedule) return;
+
+      // Save to database
+      await axios.post('/api/session-records', {
         sessionId: currentSession.sessionId,
-        sessionName: sessionName || `${selectedSchedule?.kelas} - ${selectedSchedule?.mata_kuliah}`,
-        className: selectedSchedule?.kelas,
-        subjectName: selectedSchedule?.mata_kuliah,
+        sessionName: sessionName || `${schedule.mata_kuliah} - ${schedule.kelas}`,
+        className: schedule.kelas,
+        subjectName: schedule.mata_kuliah,
         seatData: seatPositions,
         detectionData,
         summary: {
           totalSeats: seatPositions.length,
           averageFocusTime: seatPositions.reduce((sum, seat) => sum + seat.total_focus_duration, 0) / seatPositions.length,
           sessionDuration: Date.now() - new Date(currentSession.startTime).getTime()
-        }
+        },
+        tanggal: schedule.tanggal,
+        jamMulai: schedule.jam_mulai,
+        jamSelesai: schedule.jam_selesai,
+        durasi: schedule.durasi,
+        dosenId: schedule.dosen_id
       });
 
       toast.success('Session data exported successfully');
@@ -828,16 +716,23 @@ export default function LiveMonitoring() {
     }
   };
 
-  const loadSchedule = (schedule: Schedule) => {
-    setSelectedSchedule(schedule);
-    setSessionName(`${schedule.kelas} - ${schedule.mata_kuliah} - Meeting ${schedule.pertemuan_ke}`);
-    
-    // Load seat positions if available
-    if (schedule.seat_positions && schedule.seat_positions.length > 0) {
-      setSeatPositions(schedule.seat_positions);
+  const loadScheduleData = (scheduleId: string) => {
+    const schedule = schedules.find(s => s._id === scheduleId);
+    if (schedule) {
+      setSessionName(`${schedule.mata_kuliah} - ${schedule.kelas} - Meeting ${schedule.pertemuan_ke}`);
+      // Load seat positions if available
+      if (schedule.seat_positions && schedule.seat_positions.length > 0) {
+        setSeatPositions(schedule.seat_positions.map(seat => ({
+          ...seat,
+          is_occupied: false,
+          face_detected: false,
+          gesture_type: 'unknown',
+          confidence: 0,
+          focus_start_time: null,
+          total_focus_duration: 0
+        })));
+      }
     }
-    
-    toast.success('Schedule loaded');
   };
 
   // Statistics
@@ -867,9 +762,9 @@ export default function LiveMonitoring() {
           <div>
             <h1 className="text-2xl font-bold flex items-center">
               <Target className="h-8 w-8 mr-3" />
-              Live Focus Monitoring & Recording
+              Live Focus Monitoring & AI Detection
             </h1>
-            <p className="mt-2 opacity-90">Real-time student focus detection with comprehensive recording</p>
+            <p className="mt-2 opacity-90">Real-time student focus detection with YOLO AI models</p>
           </div>
           <div className="flex items-center space-x-4">
             {isMonitoring && (
@@ -879,60 +774,24 @@ export default function LiveMonitoring() {
                 className="flex items-center bg-red-500 px-3 py-1 rounded-full"
               >
                 <div className="w-2 h-2 bg-white rounded-full mr-2"></div>
-                <span className="text-sm font-medium">RECORDING</span>
+                <span className="text-sm font-medium">LIVE</span>
               </motion.div>
             )}
-            
-            {flaskStatus === 'active' && (
-              <div className="flex items-center bg-green-500 px-3 py-1 rounded-full">
-                <Brain className="h-4 w-4 mr-2" />
-                <span className="text-sm font-medium">AI ACTIVE</span>
-              </div>
-            )}
-            
-            {flaskStatus === 'error' && (
-              <div className="flex items-center bg-red-500 px-3 py-1 rounded-full">
-                <AlertCircle className="h-4 w-4 mr-2" />
-                <span className="text-sm font-medium">AI ERROR</span>
-              </div>
-            )}
-            
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setIsLabellingMode(!isLabellingMode)}
-              disabled={isMonitoring}
               className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
                 isLabellingMode 
                   ? 'bg-orange-500 hover:bg-orange-600' 
                   : 'bg-white bg-opacity-20 hover:bg-opacity-30'
-              } disabled:opacity-50`}
+              }`}
             >
               {isLabellingMode ? 'Exit Labelling' : 'Enter Labelling Mode'}
             </motion.button>
           </div>
         </div>
       </motion.div>
-
-      {/* Flask Status Alert */}
-      {flaskStatus === 'error' && (
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-red-50 border border-red-200 rounded-lg p-4"
-        >
-          <div className="flex items-center">
-            <AlertCircle className="h-5 w-5 text-red-600 mr-3" />
-            <div>
-              <h3 className="text-sm font-medium text-red-800">Flask Server Error</h3>
-              <p className="text-sm text-red-700 mt-1">{flaskError}</p>
-              <p className="text-xs text-red-600 mt-1">
-                Please ensure the Flask server is running on port 5001
-              </p>
-            </div>
-          </div>
-        </motion.div>
-      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Control Panel */}
@@ -947,13 +806,43 @@ export default function LiveMonitoring() {
           </h3>
           
           <div className="space-y-4">
+            {/* Flask Status */}
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700">Flask Server</span>
+                <div className={`flex items-center ${
+                  flaskStatus === 'connected' ? 'text-green-600' : 
+                  flaskStatus === 'error' ? 'text-red-600' : 'text-gray-400'
+                }`}>
+                  {flaskStatus === 'connected' ? <CheckCircle className="h-4 w-4" /> :
+                   flaskStatus === 'error' ? <XCircle className="h-4 w-4" /> :
+                   <AlertCircle className="h-4 w-4" />}
+                  <span className="ml-1 text-xs">{flaskStatus}</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700">Model Status</span>
+                <div className={`flex items-center ${
+                  modelStatus === 'active' ? 'text-green-600' : 
+                  modelStatus === 'loading' ? 'text-yellow-600' :
+                  modelStatus === 'error' ? 'text-red-600' : 'text-gray-400'
+                }`}>
+                  {modelStatus === 'loading' && <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current mr-1"></div>}
+                  <span className="text-xs">{modelStatus}</span>
+                </div>
+              </div>
+              {flaskError && (
+                <p className="text-xs text-red-600 mt-2">{flaskError}</p>
+              )}
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Select Schedule</label>
               <select
-                value={selectedSchedule?._id || ''}
+                value={selectedSchedule}
                 onChange={(e) => {
-                  const schedule = schedules.find(s => s._id === e.target.value);
-                  if (schedule) loadSchedule(schedule);
+                  setSelectedSchedule(e.target.value);
+                  loadScheduleData(e.target.value);
                 }}
                 disabled={isMonitoring}
                 className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
@@ -961,7 +850,7 @@ export default function LiveMonitoring() {
                 <option value="">Select Schedule</option>
                 {schedules.map((schedule) => (
                   <option key={schedule._id} value={schedule._id}>
-                    {schedule.kelas} - {schedule.mata_kuliah} (Meeting {schedule.pertemuan_ke})
+                    {schedule.mata_kuliah} - {schedule.kelas} (Meeting {schedule.pertemuan_ke})
                   </option>
                 ))}
               </select>
@@ -980,7 +869,7 @@ export default function LiveMonitoring() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Detection Model</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">YOLO Model</label>
               <select
                 value={selectedModel}
                 onChange={(e) => setSelectedModel(e.target.value)}
@@ -989,7 +878,7 @@ export default function LiveMonitoring() {
               >
                 <option value="">Select Model</option>
                 {models.map((model) => (
-                  <option key={model.id} value={model.id}>
+                  <option key={model.path} value={model.path}>
                     {model.name}
                   </option>
                 ))}
@@ -1083,7 +972,7 @@ export default function LiveMonitoring() {
                   className="w-full flex items-center justify-center px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg font-medium disabled:opacity-50"
                 >
                   <Play className="h-4 w-4 mr-2" />
-                  Start Recording
+                  Start Monitoring
                 </motion.button>
               ) : (
                 <motion.button
@@ -1093,7 +982,7 @@ export default function LiveMonitoring() {
                   className="w-full flex items-center justify-center px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg font-medium"
                 >
                   <Square className="h-4 w-4 mr-2" />
-                  Stop & Save
+                  Stop & Export
                 </motion.button>
               )}
             </div>
@@ -1108,7 +997,7 @@ export default function LiveMonitoring() {
         >
           <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
             <Eye className="h-5 w-5 mr-2" />
-            Camera Feed & Detection
+            Camera Feed & AI Detection
           </h3>
           
           <div className="relative bg-gray-900 rounded-lg overflow-hidden" style={{ aspectRatio: '16/9' }}>
@@ -1144,7 +1033,7 @@ export default function LiveMonitoring() {
 
             {isMonitoring && (
               <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium">
-                RECORDING
+                AI MONITORING
               </div>
             )}
 
@@ -1154,9 +1043,9 @@ export default function LiveMonitoring() {
               </div>
             )}
 
-            {flaskStatus === 'active' && isMonitoring && (
+            {modelStatus === 'active' && isMonitoring && (
               <div className="absolute bottom-4 left-4 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-medium">
-                AI DETECTING
+                YOLO MODEL ACTIVE
               </div>
             )}
           </div>
@@ -1169,16 +1058,15 @@ export default function LiveMonitoring() {
             {isLabellingMode ? (
               <ul className="text-sm text-blue-700 space-y-1">
                 <li>• Click and drag to create seat bounding boxes</li>
-                <li>• Blue: Empty seats, Green: Focused, Orange: Not focused, Red: Absent</li>
+                <li>• Blue: Empty seats, Green: Focused, Orange: Not focused, Red: No face detected</li>
                 <li>• Seats defined: {seatPositions.length}/{totalSeats}</li>
-                <li>• Click on seat labels to edit student IDs</li>
               </ul>
             ) : (
               <div className="text-sm text-blue-700 space-y-1">
-                <p>• AI model detecting focus within seat boundaries</p>
-                <p>• Real-time gesture recognition and focus tracking</p>
-                <p>• Data automatically saved every 2 seconds</p>
-                <p>• Flask Status: {flaskStatus}</p>
+                <p>• AI detection active within seat boundaries</p>
+                <p>• Gesture recognition: focused, sleeping, phone use, chatting, writing</p>
+                <p>• Real-time statistics updated every 2 seconds</p>
+                <p>• Model: {selectedModel ? models.find(m => m.path === selectedModel)?.name : 'None'}</p>
               </div>
             )}
           </div>
@@ -1202,7 +1090,7 @@ export default function LiveMonitoring() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-3 rounded-lg">
                     <div className="text-2xl font-bold text-blue-600">{latestData.totalDetections}</div>
-                    <div className="text-sm text-blue-600">Present</div>
+                    <div className="text-sm text-blue-600">Total Detected</div>
                   </div>
                   <div className="bg-gradient-to-r from-green-50 to-green-100 p-3 rounded-lg">
                     <div className="text-2xl font-bold text-green-600">{latestData.focusPercentage}%</div>
@@ -1251,31 +1139,20 @@ export default function LiveMonitoring() {
             <div className="space-y-2 max-h-64 overflow-y-auto">
               {seatPositions.map((seat) => (
                 <div key={seat.seat_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center flex-1">
+                  <div className="flex items-center">
                     <div className={`w-3 h-3 rounded-full mr-3 ${
                       seat.gesture_type === 'focused' ? 'bg-green-500' : 
                       seat.face_detected ? 'bg-orange-500' : 
                       seat.is_occupied ? 'bg-red-500' : 'bg-blue-500'
                     }`}></div>
-                    <div className="flex-1">
+                    <div>
                       <p className="text-sm font-medium text-gray-900">Seat {seat.seat_id}</p>
-                      {isLabellingMode ? (
-                        <input
-                          type="text"
-                          value={seat.student_id}
-                          onChange={(e) => updateStudentId(seat.seat_id, e.target.value)}
-                          className="text-xs border-gray-300 rounded px-2 py-1 w-full mt-1"
-                          placeholder="Student ID"
-                        />
-                      ) : (
-                        <p className="text-xs text-gray-500">{seat.student_id}</p>
-                      )}
+                      <p className="text-xs text-gray-500">
+                        {seat.gesture_type !== 'unknown' ? seat.gesture_type : 'No detection'}
+                      </p>
                       <p className="text-xs text-gray-500">
                         Focus: {Math.round(seat.total_focus_duration / 1000)}s
                       </p>
-                      {seat.gesture_type && seat.gesture_type !== 'none' && (
-                        <p className="text-xs text-blue-600">{seat.gesture_type}</p>
-                      )}
                     </div>
                   </div>
                   {isLabellingMode && (
@@ -1300,46 +1177,38 @@ export default function LiveMonitoring() {
           </div>
 
           {/* Session Info */}
-          {selectedSchedule && (
+          {currentSession && (
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200 p-6"
             >
               <h3 className="text-lg font-semibold text-purple-900 mb-4 flex items-center">
-                <Calendar className="h-5 w-5 mr-2" />
-                Schedule Info
+                <Clock className="h-5 w-5 mr-2" />
+                Session Info
               </h3>
               
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-purple-700">Class:</span>
-                  <span className="font-medium text-purple-900">{selectedSchedule.kelas}</span>
+                  <span className="text-purple-700">Session:</span>
+                  <span className="font-medium text-purple-900">{sessionName}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-purple-700">Subject:</span>
-                  <span className="font-medium text-purple-900">{selectedSchedule.mata_kuliah}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-purple-700">Meeting:</span>
-                  <span className="font-medium text-purple-900">{selectedSchedule.pertemuan_ke}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-purple-700">Date:</span>
+                  <span className="text-purple-700">Started:</span>
                   <span className="font-medium text-purple-900">
-                    {new Date(selectedSchedule.tanggal).toLocaleDateString()}
+                    {new Date(currentSession.startTime).toLocaleTimeString()}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-purple-700">Duration:</span>
-                  <span className="font-medium text-purple-900">{selectedSchedule.durasi} min</span>
+                  <span className="text-purple-700">Average Focus:</span>
+                  <span className="font-medium text-purple-900">{averageFocus}%</span>
                 </div>
-                {currentSession && (
-                  <div className="flex justify-between">
-                    <span className="text-purple-700">Average Focus:</span>
-                    <span className="font-medium text-purple-900">{averageFocus}%</span>
-                  </div>
-                )}
+                <div className="flex justify-between">
+                  <span className="text-purple-700">Model:</span>
+                  <span className="font-medium text-purple-900">
+                    {models.find(m => m.path === selectedModel)?.name || 'Unknown'}
+                  </span>
+                </div>
               </div>
             </motion.div>
           )}
@@ -1423,59 +1292,6 @@ export default function LiveMonitoring() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Session Records */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-xl shadow-sm border border-gray-200"
-      >
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Recent Session Records</h3>
-        </div>
-        <div className="p-6">
-          {savedSessions.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {savedSessions.slice(0, 6).map((session: any) => (
-                <div key={session._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-medium text-gray-900">{session.sessionName}</h4>
-                    <div className="flex space-x-1">
-                      <button
-                        onClick={() => window.open(`/api/session-records/export/${session._id}`, '_blank')}
-                        className="text-blue-600 hover:text-blue-800 text-sm"
-                        title="Export Excel"
-                      >
-                        <Download className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => window.open(`/api/export/pdf/session/${session._id}`, '_blank')}
-                        className="text-red-600 hover:text-red-800 text-sm"
-                        title="Export PDF"
-                      >
-                        <FileText className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-500">{session.kelas}</p>
-                  <p className="text-sm text-gray-500">{session.mata_kuliah}</p>
-                  <p className="text-sm text-gray-500">
-                    Focus: {session.detection_summary?.average_focus_percentage?.toFixed(1) || 0}%
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    {new Date(session.tanggal).toLocaleDateString()}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">
-              <FileText className="h-8 w-8 mx-auto mb-2" />
-              <p>No session records yet</p>
-            </div>
-          )}
-        </div>
-      </motion.div>
     </div>
   );
 }

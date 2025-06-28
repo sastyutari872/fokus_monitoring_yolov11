@@ -17,6 +17,7 @@ import exportRoutes from './routes/export.js';
 import sessionRecordsRoutes from './routes/sessionRecords.js';
 import flaskIntegrationRoutes from './routes/flaskIntegration.js';
 import jadwalRoutes from './routes/jadwal.js';
+import modelsRoutes from './routes/models.js';
 import { createDummyData } from './utils/seedData.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -55,6 +56,7 @@ app.use('/api/export', exportRoutes);
 app.use('/api/session-records', sessionRecordsRoutes);
 app.use('/api/flask', flaskIntegrationRoutes);
 app.use('/api/jadwal', jadwalRoutes);
+app.use('/api/models', modelsRoutes);
 
 // YOLO Integration endpoint
 app.post('/api/yolo-detection', (req, res) => {
@@ -119,4 +121,5 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/api/health`);
   console.log(`Flask integration available at: http://localhost:${PORT}/api/flask`);
+  console.log(`Models directory: ${uploadsDir}`);
 });

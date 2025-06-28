@@ -7,24 +7,53 @@ const router = express.Router();
 // Flask server configuration
 const FLASK_SERVER_URL = process.env.FLASK_SERVER_URL || 'http://localhost:5001';
 
+// Check Flask server status
+router.get('/status', auth, async (req, res) => {
+  try {
+    const response = await axios.get(`${FLASK_SERVER_URL}/health`, { timeout: 5000 });
+    res.json({ 
+      status: 'connected', 
+      flask_status: response.data,
+      message: 'Flask server is running'
+    });
+  } catch (error) {
+    console.error('Flask status check failed:', error.message);
+    res.status(500).json({ 
+      status: 'error',
+      message: 'Flask server not responding. Please ensure Flask server is running on port 5001.',
+      error: error.message 
+    });
+  }
+});
+
 // Initialize YOLO model on Flask server
 router.post('/initialize-model', auth, async (req, res) => {
   try {
-    const { modelPath, modelType, confidenceThreshold, iouThreshold } = req.body;
+    const { model_path, model_type, confidence_threshold, iou_threshold } = req.body;
     
-    const response = await axios.post(`${FLASK_SERVER_URL}/api/initialize-model`, {
-      model_path: modelPath,
-      model_type: modelType,
-      confidence_threshold: confidenceThreshold,
-      iou_threshold: iouThreshold
+    console.log('Initializing model with Flask:', {
+      model_path,
+      model_type,
+      confidence_threshold,
+      iou_threshold
     });
     
+    const response = await axios.post(`${FLASK_SERVER_URL}/api/initialize-model`, {
+      model_path: model_path,
+      model_type: model_type || 'pytorch',
+      confidence_threshold: confidence_threshold || 0.5,
+      iou_threshold: iou_threshold || 0.4
+    }, { timeout: 30000 }); // 30 second timeout for model loading
+    
+    console.log('Flask model initialization response:', response.data);
     res.json(response.data);
   } catch (error) {
-    console.error('Error initializing model:', error);
+    console.error('Error initializing model:', error.response?.data || error.message);
     res.status(500).json({ 
+      success: false,
       message: 'Failed to initialize model on Flask server',
-      error: error.response?.data || error.message 
+      error: error.response?.data || error.message,
+      details: error.response?.status ? `HTTP ${error.response.status}` : 'Network error'
     });
   }
 });
@@ -38,10 +67,14 @@ router.post('/detect-frame', auth, async (req, res) => {
       frame_data: frameData,
       seat_positions: seatPositions,
       session_id: sessionId
-    });
+    }, { timeout: 10000 }); // 10 second timeout for detection
     
     // Process detection results
     const detectionResults = response.data;
+    
+    if (!detectionResults.success) {
+      throw new Error(detectionResults.message || 'Detection failed');
+    }
     
     // Update seat positions with detection results
     const updatedSeats = seatPositions.map(seat => {
@@ -57,7 +90,13 @@ router.post('/detect-frame', auth, async (req, res) => {
         };
       }
       
-      return seat;
+      return {
+        ...seat,
+        face_detected: false,
+        gesture_type: 'unknown',
+        confidence: 0,
+        is_occupied: false
+      };
     });
     
     res.json({
@@ -68,8 +107,9 @@ router.post('/detect-frame', auth, async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error processing frame:', error);
+    console.error('Error processing frame:', error.response?.data || error.message);
     res.status(500).json({ 
+      success: false,
       message: 'Failed to process frame',
       error: error.response?.data || error.message 
     });
@@ -79,11 +119,12 @@ router.post('/detect-frame', auth, async (req, res) => {
 // Get model status from Flask server
 router.get('/model-status', auth, async (req, res) => {
   try {
-    const response = await axios.get(`${FLASK_SERVER_URL}/api/model-status`);
+    const response = await axios.get(`${FLASK_SERVER_URL}/api/model-status`, { timeout: 5000 });
     res.json(response.data);
   } catch (error) {
-    console.error('Error getting model status:', error);
+    console.error('Error getting model status:', error.response?.data || error.message);
     res.status(500).json({ 
+      status: 'error',
       message: 'Failed to get model status',
       error: error.response?.data || error.message 
     });
@@ -93,11 +134,12 @@ router.get('/model-status', auth, async (req, res) => {
 // Stop model on Flask server
 router.post('/stop-model', auth, async (req, res) => {
   try {
-    const response = await axios.post(`${FLASK_SERVER_URL}/api/stop-model`);
+    const response = await axios.post(`${FLASK_SERVER_URL}/api/stop-model`, {}, { timeout: 5000 });
     res.json(response.data);
   } catch (error) {
-    console.error('Error stopping model:', error);
+    console.error('Error stopping model:', error.response?.data || error.message);
     res.status(500).json({ 
+      success: false,
       message: 'Failed to stop model',
       error: error.response?.data || error.message 
     });
