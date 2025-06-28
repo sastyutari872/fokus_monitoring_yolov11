@@ -2,6 +2,8 @@ import express from 'express';
 import LiveSession from '../models/LiveSession.js';
 import Pertemuan from '../models/Pertemuan.js';
 import SessionRecord from '../models/SessionRecord.js';
+import Kelas from '../models/Kelas.js';
+import MataKuliah from '../models/MataKuliah.js';
 import { auth } from '../middleware/auth.js';
 import XLSX from 'xlsx';
 import PDFDocument from 'pdfkit';
@@ -131,82 +133,6 @@ router.get('/pdf/meeting/:meetingId', auth, async (req, res) => {
   }
 });
 
-// Export session record to PDF
-router.get('/pdf/session/:sessionId', auth, async (req, res) => {
-  try {
-    const { sessionId } = req.params;
-    
-    const session = await SessionRecord.findById(sessionId)
-      .populate('dosen_id', 'nama_lengkap departemen');
-
-    if (!session) {
-      return res.status(404).json({ message: 'Session record not found' });
-    }
-
-    // Create PDF
-    const doc = new PDFDocument();
-    
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="session-report-${sessionId}.pdf"`);
-    
-    doc.pipe(res);
-
-    // Header
-    doc.fontSize(20).text('Live Monitoring Session Report', { align: 'center' });
-    doc.moveDown();
-
-    // Session Info
-    doc.fontSize(14).text('Session Information', { underline: true });
-    doc.fontSize(12)
-       .text(`Session Name: ${session.sessionName}`)
-       .text(`Class: ${session.kelas}`)
-       .text(`Subject: ${session.mata_kuliah}`)
-       .text(`Date: ${session.tanggal.toLocaleDateString()}`)
-       .text(`Start Time: ${session.jam_mulai.toLocaleTimeString()}`)
-       .text(`End Time: ${session.jam_selesai.toLocaleTimeString()}`)
-       .text(`Duration: ${Math.round(session.durasi / 60000)} minutes`);
-    
-    doc.moveDown();
-
-    // Summary
-    doc.fontSize(14).text('Detection Summary', { underline: true });
-    doc.fontSize(12)
-       .text(`Total Students: ${session.seat_data.length}`)
-       .text(`Average Focus: ${session.detection_summary.average_focus_percentage.toFixed(2)}%`)
-       .text(`Peak Focus Duration: ${Math.round(session.detection_summary.peak_focus_time / 1000)} seconds`)
-       .text(`Total Detections: ${session.detection_summary.total_detections}`);
-
-    doc.moveDown();
-
-    // Student Details
-    doc.fontSize(14).text('Student Performance', { underline: true });
-    doc.fontSize(10);
-    
-    session.seat_data.forEach((student, index) => {
-      if (index % 15 === 0 && index > 0) {
-        doc.addPage();
-      }
-      doc.text(`${student.student_id}: ${student.focus_percentage}% focus (${student.final_status})`);
-    });
-
-    // Gesture Analysis
-    if (session.gesture_analysis && session.gesture_analysis.length > 0) {
-      doc.addPage();
-      doc.fontSize(14).text('Gesture Analysis', { underline: true });
-      doc.fontSize(10);
-      
-      session.gesture_analysis.forEach((gesture) => {
-        doc.text(`${gesture.gesture_type}: ${gesture.total_count} occurrences (${gesture.percentage_of_session.toFixed(1)}% of session)`);
-      });
-    }
-
-    doc.end();
-
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
 // Export class performance to PDF
 router.get('/pdf/class/:classId', auth, async (req, res) => {
   try {
@@ -258,6 +184,155 @@ router.get('/pdf/class/:classId', auth, async (req, res) => {
     });
 
     doc.end();
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Export subject performance to PDF
+router.get('/pdf/subject/:subjectId', auth, async (req, res) => {
+  try {
+    const { subjectId } = req.params;
+    
+    const subject = await MataKuliah.findById(subjectId)
+      .populate('dosen_id', 'nama_lengkap departemen');
+    
+    if (!subject) {
+      return res.status(404).json({ message: 'Subject not found' });
+    }
+
+    const meetings = await Pertemuan.find({ mata_kuliah_id: subjectId })
+      .populate('dosen_id', 'nama_lengkap')
+      .sort({ tanggal: -1 });
+
+    // Create PDF
+    const doc = new PDFDocument();
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="subject-${subject.nama}-report.pdf"`);
+    
+    doc.pipe(res);
+
+    // Header
+    doc.fontSize(20).text(`Subject Performance Report`, { align: 'center' });
+    doc.fontSize(16).text(`${subject.nama} (${subject.kode})`, { align: 'center' });
+    doc.moveDown();
+
+    // Subject Info
+    doc.fontSize(14).text('Subject Information', { underline: true });
+    doc.fontSize(12)
+       .text(`Subject: ${subject.nama}`)
+       .text(`Code: ${subject.kode}`)
+       .text(`Credits: ${subject.sks} SKS`)
+       .text(`Instructor: ${subject.dosen_id.nama_lengkap}`)
+       .text(`Department: ${subject.dosen_id.departemen}`)
+       .text(`Classes: ${subject.kelas.join(', ')}`);
+
+    doc.moveDown();
+
+    // Summary
+    if (meetings.length > 0) {
+      const averageFocus = meetings.reduce((sum, m) => sum + m.hasil_akhir_kelas.fokus, 0) / meetings.length;
+      const totalStudents = Math.max(...meetings.map(m => m.hasil_akhir_kelas.jumlah_hadir));
+
+      doc.fontSize(14).text('Performance Summary', { underline: true });
+      doc.fontSize(12)
+         .text(`Total Meetings: ${meetings.length}`)
+         .text(`Average Focus Rate: ${averageFocus.toFixed(2)}%`)
+         .text(`Max Students: ${totalStudents}`)
+         .text(`Report Generated: ${new Date().toLocaleDateString()}`);
+
+      doc.moveDown();
+
+      // Meeting Details by Class
+      subject.kelas.forEach(kelas => {
+        const classMeetings = meetings.filter(m => m.kelas === kelas);
+        if (classMeetings.length > 0) {
+          doc.fontSize(14).text(`${kelas} - Meeting History`, { underline: true });
+          doc.fontSize(10);
+          
+          classMeetings.forEach((meeting, index) => {
+            if (doc.y > 700) {
+              doc.addPage();
+            }
+            doc.text(`Meeting ${meeting.pertemuan_ke} (${meeting.tanggal.toLocaleDateString()}): ${meeting.hasil_akhir_kelas.fokus.toFixed(1)}% focus, ${meeting.hasil_akhir_kelas.jumlah_hadir} students`);
+          });
+          
+          doc.moveDown();
+        }
+      });
+    } else {
+      doc.fontSize(12).text('No meetings found for this subject.');
+    }
+
+    doc.end();
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Export subject data to Excel
+router.get('/excel/subject/:subjectId', auth, async (req, res) => {
+  try {
+    const { subjectId } = req.params;
+    
+    const subject = await MataKuliah.findById(subjectId)
+      .populate('dosen_id', 'nama_lengkap departemen');
+    
+    if (!subject) {
+      return res.status(404).json({ message: 'Subject not found' });
+    }
+
+    const meetings = await Pertemuan.find({ mata_kuliah_id: subjectId })
+      .populate('dosen_id', 'nama_lengkap')
+      .sort({ tanggal: -1 });
+
+    // Prepare data for Excel
+    const meetingData = meetings.map(meeting => ({
+      'Meeting': meeting.pertemuan_ke,
+      'Class': meeting.kelas,
+      'Date': meeting.tanggal.toLocaleDateString(),
+      'Topic': meeting.topik || 'No topic',
+      'Duration (min)': meeting.durasi_pertemuan,
+      'Focus Rate (%)': meeting.hasil_akhir_kelas.fokus.toFixed(2),
+      'Not Focused (%)': meeting.hasil_akhir_kelas.tidak_fokus.toFixed(2),
+      'Attendance': meeting.hasil_akhir_kelas.jumlah_hadir,
+      'Instructor': meeting.dosen_id.nama_lengkap
+    }));
+
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+    
+    // Subject info sheet
+    const subjectInfo = [
+      ['Subject Information'],
+      ['Name', subject.nama],
+      ['Code', subject.kode],
+      ['Credits', subject.sks + ' SKS'],
+      ['Instructor', subject.dosen_id.nama_lengkap],
+      ['Department', subject.dosen_id.departemen],
+      ['Classes', subject.kelas.join(', ')],
+      ['Total Meetings', meetings.length],
+      ['Report Generated', new Date().toLocaleDateString()]
+    ];
+    
+    const wsInfo = XLSX.utils.aoa_to_sheet(subjectInfo);
+    XLSX.utils.book_append_sheet(wb, wsInfo, 'Subject Info');
+    
+    // Meeting data sheet
+    if (meetingData.length > 0) {
+      const wsMeetings = XLSX.utils.json_to_sheet(meetingData);
+      XLSX.utils.book_append_sheet(wb, wsMeetings, 'Meeting Data');
+    }
+
+    // Generate buffer
+    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+    res.setHeader('Content-Disposition', `attachment; filename="subject-${subject.nama}-data.xlsx"`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
 
   } catch (error) {
     res.status(500).json({ message: error.message });
