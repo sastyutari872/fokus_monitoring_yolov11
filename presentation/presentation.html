@@ -495,6 +495,40 @@
             font-size: 20px;
         }
 
+        .page-detail {
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        .dark .page-detail {
+            background: rgba(31, 41, 55, 0.6);
+            border: 1px solid rgba(75, 85, 99, 0.4);
+        }
+
+        .page-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #1f2937;
+        }
+
+        .dark .page-title {
+            color: #f9fafb;
+        }
+
+        .page-description {
+            color: #6b7280;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .dark .page-description {
+            color: #9ca3af;
+        }
+
         @media (max-width: 768px) {
             .slide-content {
                 padding: 2rem 1.5rem;
@@ -552,9 +586,9 @@
                     <h1 class="slide-title">Sistem Monitoring Fokus Mahasiswa Berbasis AI</h1>
                     <p class="slide-subtitle">Student Focus Monitoring System with AI Integration</p>
                 </div>
-                <div class="text-center">
-                    <div class="mb-8">
-                        <div class="inline-flex items-center justify-center w-32 h-32 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full mb-6">
+                <div style="text-align: center;">
+                    <div style="margin-bottom: 2rem;">
+                        <div style="display: inline-flex; align-items: center; justify-content: center; width: 8rem; height: 8rem; background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); border-radius: 50%; margin-bottom: 1.5rem;">
                             <span style="font-size: 4rem;">🎯</span>
                         </div>
                         <h3 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem;">Menggunakan MERN Stack & Flask dengan YOLO Detection</h3>
@@ -871,60 +905,318 @@ Real-time Dashboard
             </div>
         </div>
 
-        <!-- Slide 8: Fitur Utama -->
+        <!-- Slide 8: Fitur Dashboard -->
         <div class="slide">
             <div class="slide-content">
                 <div class="slide-header">
-                    <h1 class="slide-title">Fitur-Fitur Utama</h1>
-                    <p class="slide-subtitle">Key Features Overview</p>
+                    <h1 class="slide-title">Fitur Dashboard</h1>
+                    <p class="slide-subtitle">Real-time Monitoring & Analytics</p>
                 </div>
 
                 <div class="feature-grid">
                     <div class="feature-card">
                         <div class="feature-icon">📊</div>
-                        <h3 class="feature-title">Real-time Dashboard</h3>
-                        <p class="feature-description">Monitoring fokus mahasiswa secara real-time dengan visualisasi data yang interaktif</p>
-                    </div>
-                    <div class="feature-card">
-                        <div class="feature-icon">🎥</div>
-                        <h3 class="feature-title">Live Monitoring</h3>
-                        <p class="feature-description">Deteksi AI langsung dari camera feed dengan akurasi tinggi</p>
+                        <h3 class="feature-title">Real-time Metrics</h3>
+                        <p class="feature-description">Live focus statistics, trend analysis, dan class performance metrics dengan update real-time</p>
                     </div>
                     <div class="feature-card">
                         <div class="feature-icon">📈</div>
-                        <h3 class="feature-title">Advanced Analytics</h3>
-                        <p class="feature-description">Analisis mendalam dengan charts, trends, dan insights</p>
+                        <h3 class="feature-title">Interactive Charts</h3>
+                        <p class="feature-description">Line charts untuk trends, pie charts untuk distribusi, bar charts untuk perbandingan kelas</p>
                     </div>
                     <div class="feature-card">
-                        <div class="feature-icon">👥</div>
-                        <h3 class="feature-title">User Management</h3>
-                        <p class="feature-description">Manajemen user dengan role-based access control</p>
+                        <div class="feature-icon">🎯</div>
+                        <h3 class="feature-title">Focus Analytics</h3>
+                        <p class="feature-description">Analisis mendalam tentang pola fokus mahasiswa dengan drill-down capabilities</p>
                     </div>
                     <div class="feature-card">
-                        <div class="feature-icon">📄</div>
-                        <h3 class="feature-title">Export Reports</h3>
-                        <p class="feature-description">Export data ke PDF dan Excel untuk dokumentasi</p>
+                        <div class="feature-icon">⚡</div>
+                        <h3 class="feature-title">Instant Alerts</h3>
+                        <p class="feature-description">Notifikasi real-time untuk low focus rate dan sistem monitoring otomatis</p>
                     </div>
-                    <div class="feature-card">
-                        <div class="feature-icon">🔒</div>
-                        <h3 class="feature-title">Security</h3>
-                        <p class="feature-description">JWT authentication dan data encryption</p>
+                </div>
+
+                <div class="page-detail">
+                    <div class="page-title">📋 Dashboard Components:</div>
+                    <div class="page-description">
+                        • <strong>Overview Cards:</strong> Total classes, subjects, meetings, average focus<br>
+                        • <strong>Focus Trends Chart:</strong> Historical data dengan filter date range<br>
+                        • <strong>Class Performance:</strong> Ranking dan comparison antar kelas<br>
+                        • <strong>Recent Activities:</strong> Latest meetings dan session updates<br>
+                        • <strong>Quick Actions:</strong> Start monitoring, create meeting, view reports
                     </div>
                 </div>
 
                 <div class="screenshot-container">
-                    <img src="foto7.jpg" alt="Features Overview" class="screenshot">
-                    <p class="screenshot-caption">Dokumentasi: Overview semua fitur sistem</p>
+                    <img src="foto2.jpg" alt="Dashboard Interface" class="screenshot">
+                    <p class="screenshot-caption">Dokumentasi: Interface dashboard dengan real-time metrics</p>
                 </div>
             </div>
         </div>
 
-        <!-- Slide 9: Pengujian -->
+        <!-- Slide 9: Fitur Live Monitoring -->
+        <div class="slide">
+            <div class="slide-content">
+                <div class="slide-header">
+                    <h1 class="slide-title">Fitur Live Monitoring</h1>
+                    <p class="slide-subtitle">AI-Powered Real-time Detection</p>
+                </div>
+
+                <div class="two-column">
+                    <div>
+                        <h3 style="font-size: 1.3rem; font-weight: bold; margin-bottom: 1rem;">AI Detection Features:</h3>
+                        <ul class="bullet-list">
+                            <li>
+                                <span class="bullet-icon">🎥</span>
+                                <span>Multiple camera support dengan auto-detection</span>
+                            </li>
+                            <li>
+                                <span class="bullet-icon">🎯</span>
+                                <span>Interactive seat positioning system</span>
+                            </li>
+                            <li>
+                                <span class="bullet-icon">🤖</span>
+                                <span>Real-time YOLO detection (30+ FPS)</span>
+                            </li>
+                            <li>
+                                <span class="bullet-icon">📊</span>
+                                <span>Live analytics dengan instant feedback</span>
+                            </li>
+                            <li>
+                                <span class="bullet-icon">🔄</span>
+                                <span>Auto-save session recordings</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="screenshot-container">
+                        <img src="foto4.jpg" alt="Live Monitoring" class="screenshot">
+                        <p class="screenshot-caption">Dokumentasi: Live monitoring dengan AI overlay</p>
+                    </div>
+                </div>
+
+                <div class="page-detail">
+                    <div class="page-title">🎯 Gesture Recognition Categories:</div>
+                    <div class="page-description">
+                        • <strong>Focused (😊):</strong> Looking at board/screen, active listening<br>
+                        • <strong>Sleeping (😴):</strong> Eyes closed, head down position<br>
+                        • <strong>Phone Usage (📱):</strong> Looking down at mobile device<br>
+                        • <strong>Chatting (💬):</strong> Talking to neighbors, social interaction<br>
+                        • <strong>Writing (✍️):</strong> Taking notes, active participation<br>
+                        • <strong>Looking Away (👀):</strong> Distracted, not paying attention<br>
+                        • <strong>Yawning (🥱):</strong> Signs of fatigue or boredom
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">95%</div>
+                        <div class="stat-label">Face Detection Accuracy</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">92%</div>
+                        <div class="stat-label">Gesture Recognition</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">30+</div>
+                        <div class="stat-label">FPS Processing Speed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">7</div>
+                        <div class="stat-label">Gesture Categories</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: Fitur Management -->
+        <div class="slide">
+            <div class="slide-content">
+                <div class="slide-header">
+                    <h1 class="slide-title">Fitur Management</h1>
+                    <p class="slide-subtitle">Academic Data Management System</p>
+                </div>
+
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">👥</div>
+                        <h3 class="feature-title">User Management</h3>
+                        <p class="feature-description">Role-based access control untuk Admin dan Dosen dengan secure authentication</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🎓</div>
+                        <h3 class="feature-title">Class Management</h3>
+                        <p class="feature-description">CRUD operations untuk kelas, student enrollment, dan attendance tracking</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📚</div>
+                        <h3 class="feature-title">Subject Management</h3>
+                        <p class="feature-description">Course catalog, instructor assignment, dan schedule management</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📅</div>
+                        <h3 class="feature-title">Meeting Scheduler</h3>
+                        <p class="feature-description">Session scheduling, focus monitoring setup, dan automated reporting</p>
+                    </div>
+                </div>
+
+                <div class="page-detail">
+                    <div class="page-title">🔐 Security Features:</div>
+                    <div class="page-description">
+                        • <strong>JWT Authentication:</strong> Secure token-based authentication<br>
+                        • <strong>Password Encryption:</strong> bcrypt hashing untuk password security<br>
+                        • <strong>Role-based Access:</strong> Admin dan Dosen dengan different permissions<br>
+                        • <strong>Data Validation:</strong> Input sanitization dan validation<br>
+                        • <strong>Session Management:</strong> Automatic logout dan session timeout
+                    </div>
+                </div>
+
+                <div class="page-detail">
+                    <div class="page-title">📊 Data Management:</div>
+                    <div class="page-description">
+                        • <strong>CRUD Operations:</strong> Create, Read, Update, Delete untuk semua entities<br>
+                        • <strong>Bulk Operations:</strong> Import/export data dalam format Excel<br>
+                        • <strong>Data Relationships:</strong> Proper foreign key relationships<br>
+                        • <strong>Audit Trail:</strong> Tracking changes dan user activities<br>
+                        • <strong>Backup System:</strong> Automated database backups
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 11: Fitur Analytics -->
+        <div class="slide">
+            <div class="slide-content">
+                <div class="slide-header">
+                    <h1 class="slide-title">Fitur Analytics</h1>
+                    <p class="slide-subtitle">Advanced Data Analytics & Insights</p>
+                </div>
+
+                <div class="two-column">
+                    <div>
+                        <h3 style="font-size: 1.3rem; font-weight: bold; margin-bottom: 1rem;">Analytics Capabilities:</h3>
+                        <ul class="bullet-list">
+                            <li>
+                                <span class="bullet-icon">📊</span>
+                                <span>Individual student performance tracking</span>
+                            </li>
+                            <li>
+                                <span class="bullet-icon">📈</span>
+                                <span>Class-wide trends dan patterns</span>
+                            </li>
+                            <li>
+                                <span class="bullet-icon">🎯</span>
+                                <span>Subject-specific insights</span>
+                            </li>
+                            <li>
+                                <span class="bullet-icon">📅</span>
+                                <span>Time-based analysis (daily, weekly, monthly)</span>
+                            </li>
+                            <li>
+                                <span class="bullet-icon">🔍</span>
+                                <span>Predictive analytics untuk early intervention</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="screenshot-container">
+                        <img src="foto7.jpg" alt="Analytics Dashboard" class="screenshot">
+                        <p class="screenshot-caption">Dokumentasi: Advanced analytics interface</p>
+                    </div>
+                </div>
+
+                <div class="page-detail">
+                    <div class="page-title">📈 Chart Types & Visualizations:</div>
+                    <div class="page-description">
+                        • <strong>Line Charts:</strong> Focus trends over time dengan multiple series<br>
+                        • <strong>Bar Charts:</strong> Class comparisons dan performance rankings<br>
+                        • <strong>Pie Charts:</strong> Activity distribution dan gesture analysis<br>
+                        • <strong>Heat Maps:</strong> Seat-based focus patterns<br>
+                        • <strong>Scatter Plots:</strong> Correlation analysis between variables<br>
+                        • <strong>Area Charts:</strong> Cumulative focus duration tracking
+                    </div>
+                </div>
+
+                <div class="page-detail">
+                    <div class="page-title">🎯 Key Performance Indicators (KPIs):</div>
+                    <div class="page-description">
+                        • <strong>Focus Rate:</strong> Percentage of focused students per session<br>
+                        • <strong>Engagement Score:</strong> Overall class engagement metrics<br>
+                        • <strong>Attention Span:</strong> Average focus duration per student<br>
+                        • <strong>Distraction Index:</strong> Types dan frequency of distractions<br>
+                        • <strong>Improvement Rate:</strong> Progress tracking over time<br>
+                        • <strong>Comparative Analysis:</strong> Class vs class performance
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 12: Fitur Export & Reports -->
+        <div class="slide">
+            <div class="slide-content">
+                <div class="slide-header">
+                    <h1 class="slide-title">Fitur Export & Reports</h1>
+                    <p class="slide-subtitle">Comprehensive Reporting System</p>
+                </div>
+
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">📄</div>
+                        <h3 class="feature-title">PDF Reports</h3>
+                        <p class="feature-description">Professional PDF reports dengan charts, tables, dan detailed analysis</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📊</div>
+                        <h3 class="feature-title">Excel Export</h3>
+                        <p class="feature-description">Raw data export dalam format Excel untuk further analysis</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📈</div>
+                        <h3 class="feature-title">Custom Reports</h3>
+                        <p class="feature-description">Customizable report templates dengan filter options</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📅</div>
+                        <h3 class="feature-title">Scheduled Reports</h3>
+                        <p class="feature-description">Automated report generation dan email delivery</p>
+                    </div>
+                </div>
+
+                <div class="page-detail">
+                    <div class="page-title">📋 Report Types:</div>
+                    <div class="page-description">
+                        • <strong>Session Reports:</strong> Individual meeting analysis dengan detailed metrics<br>
+                        • <strong>Class Reports:</strong> Comprehensive class performance over time<br>
+                        • <strong>Subject Reports:</strong> Subject-specific analysis across all classes<br>
+                        • <strong>Student Reports:</strong> Individual student progress tracking<br>
+                        • <strong>Instructor Reports:</strong> Teaching effectiveness analysis<br>
+                        • <strong>Comparative Reports:</strong> Multi-class atau multi-subject comparisons
+                    </div>
+                </div>
+
+                <div class="page-detail">
+                    <div class="page-title">🎨 Report Features:</div>
+                    <div class="page-description">
+                        • <strong>Professional Layout:</strong> Clean, readable design dengan branding<br>
+                        • <strong>Interactive Charts:</strong> Embedded visualizations dalam PDF<br>
+                        • <strong>Data Tables:</strong> Sortable dan filterable data presentations<br>
+                        • <strong>Executive Summary:</strong> Key insights dan recommendations<br>
+                        • <strong>Appendix:</strong> Raw data dan detailed methodology<br>
+                        • <strong>Export Options:</strong> Multiple formats (PDF, Excel, CSV)
+                    </div>
+                </div>
+
+                <div class="screenshot-container">
+                    <img src="foto8.jpg" alt="Report Examples" class="screenshot">
+                    <p class="screenshot-caption">Dokumentasi: Sample reports dan export options</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 13: Pengujian -->
         <div class="slide">
             <div class="slide-content">
                 <div class="slide-header">
                     <h1 class="slide-title">Pengujian Black Box</h1>
-                    <p class="slide-subtitle">Testing Results & Performance</p>
+                    <p class="slide-subtitle">Testing Results & Performance Validation</p>
                 </div>
 
                 <div class="two-column">
@@ -933,25 +1225,29 @@ Real-time Dashboard
                         <ul class="bullet-list">
                             <li>
                                 <span class="bullet-icon">✅</span>
-                                <span>Functional Testing</span>
+                                <span>Functional Testing - Core features</span>
                             </li>
                             <li>
                                 <span class="bullet-icon">🎨</span>
-                                <span>User Interface Testing</span>
+                                <span>User Interface Testing - UX/UI</span>
                             </li>
                             <li>
                                 <span class="bullet-icon">🔗</span>
-                                <span>Integration Testing</span>
+                                <span>Integration Testing - API endpoints</span>
                             </li>
                             <li>
                                 <span class="bullet-icon">⚡</span>
-                                <span>Performance Testing</span>
+                                <span>Performance Testing - Speed & load</span>
+                            </li>
+                            <li>
+                                <span class="bullet-icon">🔒</span>
+                                <span>Security Testing - Vulnerabilities</span>
                             </li>
                         </ul>
                     </div>
                     <div class="screenshot-container">
                         <img src="foto8.jpg" alt="Testing Results" class="screenshot">
-                        <p class="screenshot-caption">Dokumentasi: Hasil pengujian sistem</p>
+                        <p class="screenshot-caption">Dokumentasi: Hasil pengujian komprehensif</p>
                     </div>
                 </div>
 
@@ -973,10 +1269,22 @@ Real-time Dashboard
                         <div class="stat-label">Mobile Compatibility</div>
                     </div>
                 </div>
+
+                <div class="page-detail">
+                    <div class="page-title">🧪 Test Coverage:</div>
+                    <div class="page-description">
+                        • <strong>Authentication:</strong> Login/logout, password security, session management<br>
+                        • <strong>CRUD Operations:</strong> Create, read, update, delete untuk semua entities<br>
+                        • <strong>AI Detection:</strong> Face detection accuracy, gesture recognition<br>
+                        • <strong>Real-time Features:</strong> Live monitoring, data synchronization<br>
+                        • <strong>Export Functions:</strong> PDF generation, Excel export, data integrity<br>
+                        • <strong>Cross-browser:</strong> Chrome, Firefox, Safari, Edge compatibility
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Slide 10: Kesimpulan -->
+        <!-- Slide 14: Kesimpulan -->
         <div class="slide">
             <div class="slide-content">
                 <div class="slide-header">
@@ -1037,6 +1345,17 @@ Real-time Dashboard
                     </div>
                 </div>
 
+                <div class="page-detail">
+                    <div class="page-title">🎯 Impact & Benefits:</div>
+                    <div class="page-description">
+                        • <strong>Educational Impact:</strong> Improved teaching effectiveness dan student engagement<br>
+                        • <strong>Data-driven Decisions:</strong> Objective insights untuk curriculum improvement<br>
+                        • <strong>Efficiency Gains:</strong> Automated monitoring reduces manual effort<br>
+                        • <strong>Scalability:</strong> Can be deployed across multiple institutions<br>
+                        • <strong>Innovation:</strong> First-of-its-kind AI integration dalam education sector
+                    </div>
+                </div>
+
                 <div class="screenshot-container">
                     <img src="foto9.jpg" alt="Final Results" class="screenshot">
                     <p class="screenshot-caption">Dokumentasi: Hasil akhir dan dampak sistem</p>
@@ -1047,6 +1366,10 @@ Real-time Dashboard
                     <p style="font-size: 1.1rem; margin-bottom: 1rem;"><strong>Sasty Utari Arimbi</strong></p>
                     <p style="color: #6b7280;">Telkom University • 2025</p>
                     <p style="color: #6b7280; margin-top: 0.5rem; font-style: italic;">"Advancing Education Through Technology"</p>
+                    <div style="margin-top: 1rem; font-size: 0.9rem; color: #6b7280;">
+                        📧 sasty.utari@student.telkomuniversity.ac.id<br>
+                        🌐 github.com/sastyutari • linkedin.com/in/sastyutari
+                    </div>
                 </div>
             </div>
         </div>
@@ -1060,7 +1383,7 @@ Real-time Dashboard
             <div class="slide-counter">
                 <span id="currentSlide">1</span>
                 <span>/</span>
-                <span id="totalSlides">10</span>
+                <span id="totalSlides">14</span>
             </div>
 
             <div class="progress-bar">
