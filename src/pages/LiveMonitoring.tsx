@@ -197,7 +197,7 @@ export default function LiveMonitoring() {
 
   const fetchModels = async () => {
     try {
-      const response = await axios.get('/api/models/list');
+      const response = await axios.get('/models/list');
       setModels(response.data);
       if (response.data.length > 0) {
         setSelectedModel(response.data[0].path);
@@ -210,7 +210,7 @@ export default function LiveMonitoring() {
 
   const checkFlaskStatus = async () => {
     try {
-      const response = await axios.get('/api/flask/status');
+      const response = await axios.get('/flask/status');
       setFlaskStatus('connected');
       setFlaskError('');
     } catch (error) {
@@ -265,7 +265,7 @@ export default function LiveMonitoring() {
 
     setModelStatus('loading');
     try {
-      const response = await axios.post('/api/flask/initialize-model', {
+      const response = await axios.post('/flask/initialize-model', {
         model_path: selectedModel,
         model_type: 'pytorch',
         confidence_threshold: 0.5,
@@ -604,7 +604,7 @@ export default function LiveMonitoring() {
         const frameData = canvas.toDataURL('image/jpeg', 0.8);
 
         // Send frame to Flask for detection
-        const response = await axios.post('/api/flask/detect-frame', {
+        const response = await axios.post('/flask/detect-frame', {
           frameData,
           seatPositions,
           sessionId
@@ -690,7 +690,7 @@ export default function LiveMonitoring() {
       if (!schedule) return;
 
       // Save to database
-      await axios.post('/api/session-records', {
+      await axios.post('/session-records', {
         sessionId: currentSession.sessionId,
         sessionName: sessionName || `${schedule.mata_kuliah} - ${schedule.kelas}`,
         className: schedule.kelas,
@@ -1212,7 +1212,7 @@ export default function LiveMonitoring() {
               </div>
             </motion.div>
           )}
-        </motion.div>
+        </div>
       </div>
 
       {/* Charts */}
